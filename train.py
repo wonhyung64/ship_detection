@@ -18,7 +18,7 @@ dataset = dataset.map(lambda x, y, z, w: preprocessing_utils.preprocessing_ship(
 
 data_shapes = ([None, None, None], [None, None], [None])
 padding_values = (tf.constant(0, tf.float32), tf.constant(0, tf.float32), tf.constant(-1, tf.int32))
-dataset = dataset.shuffle(buffer_size=14000, reshuffle_each_iteration=True)
+dataset = dataset.shuffle(buffer_size=10500, reshuffle_each_iteration=True)
 dataset = dataset.repeat().padded_batch(batch_size, padded_shapes=data_shapes, padding_values=padding_values, drop_remainder=True)
 dataset = iter(dataset)
 
@@ -32,7 +32,7 @@ rpn_model = model_utils.RPN(hyper_params)
 input_shape = (None, 500, 500, 3)
 rpn_model.build(input_shape)
 
-boundaries = [100000, 200000, 300000]
+boundaries = [26250, 78750, 157500]
 values = [1e-5, 1e-6, 1e-7, 1e-8]
 learning_rate_fn = tf.keras.optimizers.schedules.PiecewiseConstantDecay(boundaries, values)
 
@@ -80,7 +80,7 @@ def train_step2(pooled_roi, roi_deltas, roi_labels):
 
 #%%
 atmp_dir = os.getcwd()
-atmp_dir = etc_utils.generate_save_dir(atmp_dir, hyper_params)
+atmp_dir = etc_utils.generate_save_dir(atmp_dir)
 
 step = 0
 progress_bar = tqdm(range(hyper_params['iters']))

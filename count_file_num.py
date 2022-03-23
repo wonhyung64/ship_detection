@@ -14,5 +14,7 @@ i = 0
 while True:
     i += 1
     print(i)
-    try: next(dataset)
-    except: continue
+    # try: next(dataset)
+    # except: continue
+    next(dataset)
+# %%
