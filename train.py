@@ -143,7 +143,8 @@ mAP = []
 img_num = 0
 progress_bar = tqdm(range(hyper_params['attempts']))
 for _ in progress_bar:
-    img, gt_boxes, gt_labels = next(dataset)
+    try: img, gt_boxes, gt_labels = next(dataset)
+    except: continue
     start_time = time.time()
     rpn_reg_output, rpn_cls_output, feature_map = rpn_model(img)
     roi_bboxes, roi_scores = postprocessing_utils.RoIBBox(rpn_reg_output, rpn_cls_output, anchors, hyper_params)
