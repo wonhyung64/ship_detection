@@ -2,29 +2,19 @@
 import os
 import time
 import tensorflow as tf
-
 from tqdm import tqdm
-from tensorflow import keras
-
-import utils, loss_utils, model_utils, preprocessing_utils, postprocessing_utils, anchor_utils, target_utils, test_utils
+import etc_utils, loss_utils, model_utils, preprocessing_utils, postprocessing_utils, anchor_utils, target_utils, test_utils, ship
 
 #%% 
-hyper_params = utils.get_hyper_params()
+hyper_params = etc_utils.get_hyper_params()
 hyper_params['anchor_count'] = len(hyper_params['anchor_ratios']) * len(hyper_params['anchor_scales'])
 
 iters = hyper_params['iters']
 batch_size = hyper_params['batch_size']
 img_size = (hyper_params["img_size"], hyper_params["img_size"])
-dataset_name = hyper_params["dataset_name"]
 
-if dataset_name == "ship":
-    import ship
-    dataset, labels = ship.fetch_dataset(dataset_name, "train", img_size)
-    dataset = dataset.map(lambda x, y, z, w: preprocessing_utils.preprocessing_ship(x, y, z, w))
-else:
-    import data_utils
-    dataset, labels = data_utils.fetch_dataset(dataset_name, "train", img_size)
-    dataset = dataset.map(lambda x, y, z: preprocessing_utils.preprocessing(x, y, z))
+dataset, labels = ship.fetch_dataset("ship", "train", img_size)
+dataset = dataset.map(lambda x, y, z, w: preprocessing_utils.preprocessing_ship(x, y, z, w))
 
 data_shapes = ([None, None, None], [None, None], [None])
 padding_values = (tf.constant(0, tf.float32), tf.constant(0, tf.float32), tf.constant(-1, tf.int32))
@@ -90,14 +80,7 @@ def train_step2(pooled_roi, roi_deltas, roi_labels):
 
 #%%
 atmp_dir = os.getcwd()
-atmp_dir = atmp_dir + "/frcnn_atmp/4"
-
-rpn_model.load_weights(atmp_dir + r"/rpn_weights/weights")
-dtn_model.load_weights(atmp_dir + r"/dtn_weights/weights")
-
-#%%
-# atmp_dir = os.getcwd()
-# atmp_dir = utils.generate_save_dir(atmp_dir, hyper_params)
+atmp_dir = etc_utils.generate_save_dir(atmp_dir, hyper_params)
 
 step = 0
 progress_bar = tqdm(range(hyper_params['iters']))
@@ -134,21 +117,14 @@ for _ in progress_bar:
         print("Weights Saved")
 
 print("Time taken: %.2fs" % (time.time() - start_time))
-utils.save_dict_to_file(hyper_params, atmp_dir + '/hyper_params')
+etc_utils.save_dict_to_file(hyper_params, atmp_dir + '/hyper_params')
 
 #%%test
 hyper_params["batch_size"] = batch_size = 1
 
-if dataset_name == "ship":
-    import ship
-    dataset, labels = ship.fetch_dataset(dataset_name, "train", img_size)
-    dataset = dataset.map(lambda x, y, z, w: preprocessing_utils.preprocessing_ship(x, y, z, w))
-else:
-    import data_utils
-    dataset, labels = data_utils.fetch_dataset(dataset_name, "train", img_size)
-    dataset = dataset.map(lambda x, y, z: preprocessing_utils.preprocessing(x, y, z))
-
-dataset = dataset.repeat().padded_batch(batch_size, padded_shapes=data_shapes, padding_values=padding_values)
+dataset, labels = ship.fetch_dataset("ship", "train", img_size)
+dataset = dataset.map(lambda x, y, z, w: preprocessing_utils.preprocessing_ship(x, y, z, w))
+dataset = dataset.padded_batch(batch_size, padded_shapes=data_shapes, padding_values=padding_values)
 dataset = iter(dataset)
 
 rpn_model = model_utils.RPN(hyper_params)
@@ -189,5 +165,5 @@ total_time_res = "%.2fms" % (tf.reduce_mean(total_time))
 result = {"mAP" : mAP_res,
           "total_time" : total_time_res}
 
-utils.save_dict_to_file(result, atmp_dir + "/result")
+etc_utils.save_dict_to_file(result, atmp_dir + "/result")
 #%%
