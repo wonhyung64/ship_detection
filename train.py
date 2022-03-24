@@ -32,12 +32,12 @@ rpn_model = model_utils.RPN(hyper_params)
 input_shape = (None, 500, 500, 3)
 rpn_model.build(input_shape)
 
-boundaries = [26250, 78750, 157500]
-values = [1e-5, 1e-6, 1e-7, 1e-8]
-learning_rate_fn = tf.keras.optimizers.schedules.PiecewiseConstantDecay(boundaries, values)
+# boundaries = [26250, 78750, 157500]
+# values = [1e-5, 1e-6, 1e-7, 1e-8]
+# learning_rate_fn = tf.keras.optimizers.schedules.PiecewiseConstantDecay(boundaries, values)
 
-optimizer1 = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn)
-# optimizer1 = keras.optimizers.Adam(learning_rate=1e-5)
+# optimizer1 = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn)
+optimizer1 = tf.keras.optimizers.Adam(learning_rate=1e-7)
 
 @tf.function
 def train_step1(img, bbox_deltas, bbox_labels, hyper_params):
@@ -60,8 +60,9 @@ dtn_model = model_utils.DTN(hyper_params)
 input_shape = (None, hyper_params['train_nms_topn'], 7, 7, 512)
 dtn_model.build(input_shape)
 
-optimizer2 = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn)
-# optimizer2 = keras.optimizers.Adam(learning_rate=1e-5)
+# optimizer2 = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn)
+optimizer2 = tf.keras.optimizers.Adam(learning_rate=1e-7)
+
 
 @tf.function
 def train_step2(pooled_roi, roi_deltas, roi_labels):
@@ -77,6 +78,12 @@ def train_step2(pooled_roi, roi_deltas, roi_labels):
     optimizer2.apply_gradients(zip(grads_dtn, dtn_model.trainable_weights))
 
     return dtn_reg_loss, dtn_cls_loss
+
+#%%
+weights_dir = os.getcwd() + "/frcnn_atmp"
+weights_dir = weights_dir + "/" + os.listdir(weights_dir)[0]
+rpn_model.load_weights(weights_dir + '/rpn_weights/weights')
+dtn_model.load_weights(weights_dir + '/dtn_weights/weights')
 
 #%%
 atmp_dir = os.getcwd()

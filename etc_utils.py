@@ -26,7 +26,7 @@ def get_hyper_params() -> Dict:
         "pos_threshold": 0.65,
         "neg_threshold": 0.25,
         "batch_size": 4,
-        "iters": 262500,
+        "iters": 66000,
         "attempts": 100,
         "base_model": "vgg16",
         "mAP_threshold": 0.5,

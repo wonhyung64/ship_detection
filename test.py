@@ -3,30 +3,23 @@ import os
 import time
 import tensorflow as tf
 import numpy as np
-
-from PIL import Image
+import matplotlib.pyplot as plt
+from PIL import Image, ImageDraw
 from tqdm import tqdm
 
-import utils, model_utils, preprocessing_utils, postprocessing_utils, anchor_utils, test_utils
+import ship, etc_utils, model_utils, preprocessing_utils, postprocessing_utils, anchor_utils, test_utils
 
-from PIL import ImageDraw
-import matplotlib.pyplot as plt
+
 #%% 
-hyper_params = utils.get_hyper_params()
+hyper_params = etc_utils.get_hyper_params()
 hyper_params['anchor_count'] = len(hyper_params['anchor_ratios']) * len(hyper_params['anchor_scales'])
 
 hyper_params["batch_size"] = batch_size = 1
 img_size = (hyper_params["img_size"], hyper_params["img_size"])
 dataset_name = hyper_params["dataset_name"]
 
-if dataset_name == "ship":
-    import ship
-    dataset, labels = ship.fetch_dataset(dataset_name, "test", img_size)
-    dataset = dataset.map(lambda x, y, z, w: preprocessing_utils.preprocessing_ship(x, y, z, w))
-else:
-    import data_utils
-    dataset, labels = data_utils.fetch_dataset(dataset_name, "test", img_size)
-    dataset = dataset.map(lambda x, y, z: preprocessing_utils.preprocessing(x, y, z))
+dataset, labels = ship.fetch_dataset(dataset_name, "test", img_size)
+dataset = dataset.map(lambda x, y, z, w: preprocessing_utils.preprocessing_ship(x, y, z, w))
 
 data_shapes = ([None, None, None], [None, None], [None])
 padding_values = (tf.constant(0, tf.float32), tf.constant(0, tf.float32), tf.constant(-1, tf.int32))
@@ -70,27 +63,28 @@ for _ in progress_bar:
     roi_bboxes, _ = postprocessing_utils.RoIBBox(rpn_reg_output, rpn_cls_output, anchors, hyper_params)
     pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
     dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
+    final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=0.7)
 
-    best_threshold = 0.
-    best_AP = 0.
-    for threshold in threshold_lst:
-        final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=threshold)
-        AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
-        # AP = test_utils.calculate_AP50(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
-        if AP >= best_AP: 
-            best_threshold = threshold
-            best_AP = AP
+    # best_threshold = 0.
+    # best_AP = 0.
+    # for threshold in threshold_lst:
+    #     final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=threshold)
+    #     AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
+    #     # AP = test_utils.calculate_AP50(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
+    #     if AP >= best_AP: 
+    #         best_threshold = threshold
+    #         best_AP = AP
 
-    mAP.append(best_AP)
-    optimal_threshold.append(best_threshold)
+    # mAP.append(best_AP)
+    # optimal_threshold.append(best_threshold)
 
-    # time_ = float(time.time() - start_time)*1000
-    # AP = test_utils.calculate_AP50(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
-    # test_utils.draw_dtn_output(img, final_bboxes, labels, final_labels, final_scores, )
-    # print(num)
-    # total_time.append(time_)
-    # mAP.append(AP)
-    # num += 1
+    time_ = float(time.time() - start_time)*1000
+    AP = test_utils.calculate_AP50(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
+    test_utils.draw_dtn_output(img, final_bboxes, labels, final_labels, final_scores, )
+    print(num)
+    total_time.append(time_)
+    mAP.append(AP)
+    num += 1
 
     
 print("mAP: %.2f" % (tf.reduce_mean(mAP)))
