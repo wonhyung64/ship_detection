@@ -6,6 +6,7 @@ import xml.etree.ElementTree as elemTree
 import re
 import tensorflow as tf
 from PIL import Image
+from tqdm import tqdm
 
 #%%
 def serialize_example(dic):
@@ -16,15 +17,17 @@ def serialize_example(dic):
     label = dic["label"].tobytes()
     filename = dic["filename"].tobytes()
 
-    dic = tf.train.Example(features=tf.train.Features(feature={
+    feature_dict={
         'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image])),
         'image_shape': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image_shape])),
         'bbox': tf.train.Feature(bytes_list=tf.train.BytesList(value=[bbox])),
         'bbox_shape': tf.train.Feature(bytes_list=tf.train.BytesList(value=[bbox_shape])),
         'label': tf.train.Feature(bytes_list=tf.train.BytesList(value=[label])),
         'filename': tf.train.Feature(bytes_list=tf.train.BytesList(value=[filename])),
-    })) 
-    return dic.SerializeToString()
+    }
+
+    example = tf.train.Example(features=tf.train.Features(feature=feature_dict)) 
+    return example.SerializeToString()
 
 #%%
 def deserialize_example(serialized_string):
@@ -64,8 +67,8 @@ def read_labels(label_dir):
     return labels
 
 #%%
-def fetch_dataset(dataset, split, img_size, file_dir="C:/won", save_dir="D:/won"):
-    save_dir = f"{save_dir}/data/{dataset}_tfrecord_{img_size[0]}_{img_size[1]}"
+def fetch_dataset(dataset, split, img_size, file_dir="D:/won/data", save_dir="D:/won/data"):
+    save_dir = f"{save_dir}/{dataset}_tfrecord_{img_size[0]}_{img_size[1]}"
 
     if os.path.isdir(save_dir) == False:
         os.mkdir(save_dir)
@@ -98,7 +101,7 @@ def fetch_dataset(dataset, split, img_size, file_dir="C:/won", save_dir="D:/won"
                         print(try_num)
                         file_dir5 = file_dir4 + "/" + filename_lst[k]
                         filename = re.sub(r'[^0-9]', '', filename_lst[k])
-                        filename_lst.append(filename)
+                        filename_ = list(filename)
 
                         #jpg
                         img_ = Image.open(file_dir5 + ".jpg")
@@ -118,7 +121,7 @@ def fetch_dataset(dataset, split, img_size, file_dir="C:/won", save_dir="D:/won"
                                     # print("--", y.tag)
                                     if y.tag == "bndbox":
                                         bbox_ = [int(z.text) for z in y] 
-                                        bbox = [bbox_[0] / 2160, bbox_[1] / 3840, bbox_[2] / 2160, bbox_[3] / 3840]
+                                        bbox = [bbox_[1] / 2160, bbox_[0] / 3840, bbox_[3] / 2160, bbox_[2] / 3840]
                                         # print("----", bbox)
                                         bboxes_.append(bbox)
                                     if y.tag == "category_id":
@@ -129,6 +132,8 @@ def fetch_dataset(dataset, split, img_size, file_dir="C:/won", save_dir="D:/won"
                                         label_dict[str(label)] = y.text
                         bboxes = np.array(bboxes_, dtype=np.float32)
                         labels = np.array(labels_, dtype=np.int32)
+                        bboxes = bboxes[labels == 2]
+                        labels = labels[labels == 2] - 2
 
                         #json
                         with open(file_dir5 + "_meta.json", "r", encoding="UTF8") as st_json:
@@ -145,7 +150,7 @@ def fetch_dataset(dataset, split, img_size, file_dir="C:/won", save_dir="D:/won"
                             "bbox":bboxes,
                             "bbox_shape":bboxes.shape,
                             "label":labels,
-                            "filename":np.array(filename)
+                            "filename":np.array(filename_)
                         }
 
                         info_ = {
@@ -171,3 +176,114 @@ def fetch_dataset(dataset, split, img_size, file_dir="C:/won", save_dir="D:/won"
     return dataset, labels
 
 # %%
+def fetch_dataset_v2(dataset, split, img_size, file_dir="D:/won/data", save_dir="D:/won/data"):
+
+    save_dir = f"{save_dir}/{dataset}_tfrecord_{img_size[0]}_{img_size[1]}"
+
+    if os.path.isdir(save_dir) == False:
+        os.mkdir(save_dir)
+        label_dict = {}
+        folder_dir_lst = []
+
+        file_dir1 = file_dir
+        file_dir2 = f"{file_dir1}/ship_detection/train/남해_여수항1구역_BOX"
+        file_dir2_conts = os.listdir(file_dir2)
+        for i in range(len(file_dir2_conts)):
+            file_dir3 = f"{file_dir2}/{file_dir2_conts[i]}"
+            file_dir3_conts = os.listdir(file_dir3)
+            for j in range(len(file_dir3_conts)):
+                file_dir4 = f"{file_dir3}/{file_dir3_conts[j]}"
+                folder_dir_lst.append(file_dir4)
+
+        np.random.seed(1)
+        train_dir_idx = np.random.choice(len(folder_dir_lst), 600, replace=False)
+        test_dir_idx = [x for x in range(len(folder_dir_lst)) if x not in train_dir_idx]
+
+        for split_idx, split_name in ((train_dir_idx, "train"), (test_dir_idx, "test")):
+            writer = tf.io.TFRecordWriter(f'{save_dir}/{split_name}.tfrecord'.encode("utf-8"))
+            for i in tqdm(range(len(split_idx))):
+                folder_dir = folder_dir_lst[train_dir_idx[i]]
+                folder_conts = os.listdir(folder_dir)
+                filename_lst = sorted(list(set([folder_conts[l][:25] for l in range(len(folder_conts))])))
+                for j in range(len(filename_lst)):
+                    if j % 3 == 0:
+                        sample_name = filename_lst[j]
+                        sample_name_ = re.sub(r'[^0-9]', '', sample_name)
+                        sample = f"{folder_dir}/{sample_name}"
+
+                    #jpg
+                        img_ = Image.open(sample + ".jpg")
+                        img_ = tf.convert_to_tensor(np.array(img_, dtype=np.int32))
+                        img_ = tf.image.resize(img_, img_size) / 255
+                        norm_mean = (0.4738637621963933, 0.5181327285241354, 0.5290525313499966)
+                        norm_mean = tf.expand_dims(tf.expand_dims(tf.constant(norm_mean), axis=0), axis=0)
+                        norm_std = (0.243976435460058, 0.23966295898251888, 0.24247457088379498)
+                        norm_std = tf.expand_dims(tf.expand_dims(tf.constant(norm_std), axis=0), axis=0)
+                        norm_img = (img_ - norm_mean) / norm_std
+                        img = np.array(norm_img)
+
+                        #xml
+                        tree = elemTree.parse(sample + ".xml")
+                        root = tree.getroot()
+                        bboxes_ = []
+                        labels_ = []
+                        for x in root:
+                            # print(x.tag)
+                            if x.tag == "object":
+                                for y in x:
+                                    # print("--", y.tag)
+                                    if y.tag == "bndbox":
+                                        bbox_ = [int(z.text) for z in y] 
+                                        bbox = [bbox_[1] / 2160 , bbox_[0] / 3840, bbox_[3] / 2160, bbox_[2] / 3840]
+                                        # print("----", bbox)
+                                        bboxes_.append(bbox)
+                                    if y.tag == "category_id":
+                                        # print("----", y.text)
+                                        label = int(y.text)
+                                        labels_.append(label)
+                                    if y.tag == "name": 
+                                        label_dict[str(label)] = y.text
+                        bboxes = np.array(bboxes_, dtype=np.float32)
+                        labels = np.array(labels_, dtype=np.int32)
+                        bboxes = bboxes[labels == 2]
+                        labels = labels[labels == 2] - 2
+
+                        #json
+                        with open(sample + "_meta.json", "r", encoding="UTF8") as st_json:
+                            st_python = json.load(st_json)
+                        st_python["Date"]
+                        time = st_python["Date"][11:-1]
+                        weather = st_python["Weather"]
+                        season = st_python["Season"]
+
+                        #to_dictionary
+                        dic = {
+                            "image":img,
+                            "image_shape":img.shape,
+                            "bbox":bboxes,
+                            "bbox_shape":bboxes.shape,
+                            "label":labels,
+                            "filename":np.array(list(sample_name_))
+                        }
+
+                        info_ = {
+                            "time":time,
+                            "weather":weather,
+                            "season":season,
+                        }
+
+                        info = np.array([info_])
+
+                        writer.write(serialize_example(dic))
+                        if os.path.isdir(save_dir + "/meta") == False: os.mkdir(save_dir + "/meta")
+
+                        info_dir = f"{save_dir}/meta/{sample_name_}"
+                        np.save(info_dir + ".npy", info, allow_pickle=True)
+
+    dataset = tf.data.TFRecordDataset(f"{save_dir}/{split}.tfrecord".encode("utf-8")).map(deserialize_example)
+    labels = read_labels(save_dir)
+
+    return dataset, labels
+
+#%%
+fetch_dataset_v2("ship", "train", (500, 500))

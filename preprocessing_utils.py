@@ -42,7 +42,7 @@ def preprocessing_ship(
     if (np.random.uniform(0, 1, 1) > 0.5) == True:
         img, gt_boxes = flip_horizontal(img, gt_boxes)
 
-    return img, gt_boxes, gt_labels
+    return img, gt_boxes, gt_labels, filename
 
 
 def flip_horizontal(img: tf.Tensor, gt_boxes: tf.Tensor) -> Tuple:
