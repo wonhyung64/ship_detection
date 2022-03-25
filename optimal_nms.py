@@ -15,7 +15,7 @@ hyper_params["batch_size"] = batch_size = 1
 img_size = (hyper_params["img_size"], hyper_params["img_size"])
 dataset_name = hyper_params["dataset_name"]
 
-dataset, labels = ship.fetch_dataset_v2(dataset_name, "test", img_size)
+dataset, labels = ship.fetch_dataset_v2(dataset_name, "train", img_size)
 dataset = dataset.map(lambda x, y, z, w: preprocessing_utils.preprocessing_ship(x, y, z, w))
 dataset = dataset.batch(1)
 dataset = iter(dataset)
@@ -48,6 +48,7 @@ mAP = []
 optimal_threshold = []
 threshold_lst = np.arange(0.5, 1.0, 0.05)
 progress_bar = tqdm(range(10431))
+writer = tf.io.TFRecordWriter(f'C:/won/data/optimal_threshold/train.tfrecord'.encode("utf-8"))
 for _ in progress_bar:
     img, gt_boxes, gt_labels, filename = next(dataset)
     rpn_reg_output, rpn_cls_output, feature_map = rpn_model(img)
@@ -66,14 +67,15 @@ for _ in progress_bar:
     mAP.append(best_AP)
     optimal_threshold.append(best_threshold)
 
-    img
-    filename
-    feature_map
-    pooled_roi
-    dtn_reg_output
-    dtn_cls_output
-    
-
+    feature_dic = {
+        "image":img,
+        "filename":filename,
+        "feature_map":feature_map,
+        "dtn_reg_output":dtn_reg_output,
+        "dtn_cls_output":dtn_cls_output,
+        "best_threshold":[best_threshold],
+    }
+    writer.write(ship.serialize_feature(feature_dic))
 
 print("mAP: %.2f" % (tf.reduce_mean(mAP)))
 
