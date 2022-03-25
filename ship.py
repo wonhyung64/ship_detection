@@ -287,7 +287,6 @@ def fetch_dataset_v2(dataset, split, img_size, file_dir="D:/won/data", save_dir=
 
 #%%
 def serialize_feature(dic):
-    image = np.array(dic["image"]).tobytes()
     filename = np.array(dic["filename"]).tobytes()
     feature_map = np.array(dic["feature_map"]).tobytes()
     dtn_reg_output = np.array(dic["dtn_reg_output"]).tobytes()
@@ -295,7 +294,6 @@ def serialize_feature(dic):
     best_threshold = np.array(dic["best_threshold"]).tobytes()
 
     feature_dict={
-        'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image])),
         'filename': tf.train.Feature(bytes_list=tf.train.BytesList(value=[filename])),
         'feature_map': tf.train.Feature(bytes_list=tf.train.BytesList(value=[feature_map])),
         'dtn_reg_output': tf.train.Feature(bytes_list=tf.train.BytesList(value=[dtn_reg_output])),
@@ -309,7 +307,6 @@ def serialize_feature(dic):
 #%%
 def deserialize_feature(serialized_string):
     image_feature_description = { 
-        'image': tf.io.FixedLenFeature([], tf.string), 
         'filename': tf.io.FixedLenFeature([], tf.string), 
         'feature_map': tf.io.FixedLenFeature([], tf.string), 
         'dtn_reg_output': tf.io.FixedLenFeature([], tf.string), 
@@ -318,16 +315,14 @@ def deserialize_feature(serialized_string):
     } 
     example = tf.io.parse_single_example(serialized_string, image_feature_description) 
 
-    image = tf.io.decode_raw(example["image"], tf.float32)
     filename = tf.io.decode_raw(example["filename"], tf.int32)
     feature_map = tf.io.decode_raw(example["feature_map"], tf.float32)
     dtn_reg_output = tf.io.decode_raw(example["dtn_reg_output"], tf.int32) 
     dtn_cls_output = tf.io.decode_raw(example["dtn_cls_output"], tf.int32)
     best_threshold = tf.io.decode_raw(example["best_threshold"], tf.int32)
 
-    image = tf.reshape(image, )
     feature_map = tf.reshape(feature_map, )
     dtn_reg_output = tf.reshape(dtn_reg_output, )
     dtn_cls_output = tf.reshape(dtn_cls_output, )
     
-    return image, filename, feature_map, dtn_reg_output, dtn_cls_output, best_threshold
+    return filename, feature_map, dtn_reg_output, dtn_cls_output, best_threshold

@@ -68,7 +68,6 @@ for _ in progress_bar:
     optimal_threshold.append(best_threshold)
 
     feature_dic = {
-        "image":img,
         "filename":filename,
         "feature_map":feature_map,
         "dtn_reg_output":dtn_reg_output,
