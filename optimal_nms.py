@@ -67,16 +67,12 @@ for _ in progress_bar:
     mAP.append(best_AP)
     optimal_threshold.append(best_threshold)
 
-    feature_map.shape
-    dtn_reg_output.shape
-    dtn_cls_output.shape
-    best_threshold.shape
     feature_dic = {
-        "filename":filename,
-        "feature_map":feature_map,
-        "dtn_reg_output":dtn_reg_output,
-        "dtn_cls_output":dtn_cls_output,
-        "best_threshold":[best_threshold],
+        "filename":tf.squeeze(filename, axis=0),
+        "feature_map":tf.squeeze(feature_map, axis=0),
+        "dtn_reg_output":tf.squeeze(dtn_reg_output, axis=0),
+        "dtn_cls_output": tf.squeeze(dtn_cls_output, axis=0),
+        "best_threshold": tf.constant(best_threshold, tf.float32),
     }
     writer.write(ship.serialize_feature(feature_dic))
 

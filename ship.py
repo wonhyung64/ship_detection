@@ -317,12 +317,12 @@ def deserialize_feature(serialized_string):
 
     filename = tf.io.decode_raw(example["filename"], tf.int32)
     feature_map = tf.io.decode_raw(example["feature_map"], tf.float32)
-    dtn_reg_output = tf.io.decode_raw(example["dtn_reg_output"], tf.int32) 
-    dtn_cls_output = tf.io.decode_raw(example["dtn_cls_output"], tf.int32)
-    best_threshold = tf.io.decode_raw(example["best_threshold"], tf.int32)
+    dtn_reg_output = tf.io.decode_raw(example["dtn_reg_output"], tf.float32) 
+    dtn_cls_output = tf.io.decode_raw(example["dtn_cls_output"], tf.float32)
+    best_threshold = tf.io.decode_raw(example["best_threshold"], tf.float32)
 
-    feature_map = tf.reshape(feature_map, (1, 31, 31, 512))
-    dtn_reg_output = tf.reshape(dtn_reg_output, (1, 1500, 16))
-    dtn_cls_output = tf.reshape(dtn_cls_output, (1, 1500, 4))
+    feature_map = tf.reshape(feature_map, (31, 31, 512))
+    dtn_reg_output = tf.reshape(dtn_reg_output, (1500, 16))
+    dtn_cls_output = tf.reshape(dtn_cls_output, (1500, 4))
     
     return filename, feature_map, dtn_reg_output, dtn_cls_output, best_threshold
