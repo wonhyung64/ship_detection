@@ -1,8 +1,7 @@
 #%%
-from msilib.schema import Class
 import tensorflow as tf
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Conv2D, TimeDistributed, Dense, Flatten, Dropout
+from tensorflow.keras.layers import Conv2D, TimeDistributed, Dense, Flatten, Dropout, Reshape, GlobalMaxPooling2D, Concatenate
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.vgg19 import VGG19
 from typing import Dict, List
@@ -129,3 +128,22 @@ class DTN(Model):
         dtn_cls_output = self.cls(fc5)
 
         return [dtn_reg_output, dtn_cls_output]
+
+#%%
+class VectorizeFeatures(tf.keras.layers.Layer):
+    def __init__(self):
+        super(VectorizeFeatures, self).__init__()
+        self.reshape = Reshape((1500, 4, 4))
+        self.pooling2d = GlobalMaxPooling2D()
+        self.concat = Concatenate()
+
+    def call(self, inputs):
+        feature_map, dtn_reg_output, dtn_cls_output = inputs
+        feature_map_vec = self.pooling2d(feature_map)
+        dtn_reg_output  = self.reshape(dtn_reg_output)
+        dtn_reg_output = tf.reduce_sum(dtn_reg_output, axis=-1)
+        dtn_output = dtn_reg_output * dtn_cls_output
+        dtn_output_vec = tf.reduce_max(dtn_output, axis=-1)
+        features = self.concat([feature_map_vec, dtn_output_vec])
+
+        return features
