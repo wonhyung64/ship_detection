@@ -211,7 +211,7 @@ def fetch_dataset_v2(dataset, split, img_size, file_dir="D:/won/data", save_dir=
                         sample_name_ = re.sub(r'[^0-9]', '', sample_name)
                         sample = f"{folder_dir}/{sample_name}"
 
-                    #jpg
+                        #jpg
                         img_ = Image.open(sample + ".jpg")
                         img_ = tf.convert_to_tensor(np.array(img_, dtype=np.int32))
                         img_ = tf.image.resize(img_, img_size) / 255
@@ -324,5 +324,5 @@ def deserialize_feature(serialized_string):
     feature_map = tf.reshape(feature_map, (31, 31, 512))
     dtn_reg_output = tf.reshape(dtn_reg_output, (1500, 16))
     dtn_cls_output = tf.reshape(dtn_cls_output, (1500, 4))
-    
+
     return filename, feature_map, dtn_reg_output, dtn_cls_output, best_threshold
