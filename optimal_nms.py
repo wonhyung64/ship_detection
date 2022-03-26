@@ -67,6 +67,10 @@ for _ in progress_bar:
     mAP.append(best_AP)
     optimal_threshold.append(best_threshold)
 
+    feature_map.shape
+    dtn_reg_output.shape
+    dtn_cls_output.shape
+    best_threshold.shape
     feature_dic = {
         "filename":filename,
         "feature_map":feature_map,
