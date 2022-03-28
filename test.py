@@ -3,11 +3,26 @@ import os
 import time
 import tensorflow as tf
 import numpy as np
+import joblib
 from PIL import Image
 from tqdm import tqdm
 
 import ship, etc_utils, model_utils, preprocessing_utils, postprocessing_utils, anchor_utils, test_utils
 
+
+#%%
+def draw_custom_img(img_dir):
+    image = Image.open(img_dir)
+    image_ = np.array(image)
+    image_ = tf.convert_to_tensor(image_)
+    image_ = tf.image.resize(image_, (500,500))/ 255
+    img = tf.expand_dims(image_, axis=0)
+    rpn_reg_output, rpn_cls_output, feature_map = rpn_model(img)
+    roi_bboxes, _ = postprocessing_utils.RoIBBox(rpn_reg_output, rpn_cls_output, anchors, hyper_params)
+    pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
+    dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
+    final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params)
+    test_utils.draw_frcnn_output(img, final_bboxes, labels, final_labels, final_scores)
 
 #%% 
 hyper_params = etc_utils.get_hyper_params()
@@ -19,10 +34,7 @@ dataset_name = hyper_params["dataset_name"]
 
 dataset, labels = ship.fetch_dataset(dataset_name, "test", img_size)
 dataset = dataset.map(lambda x, y, z, w: preprocessing_utils.preprocessing_ship(x, y, z, w))
-
-data_shapes = ([None, None, None], [None, None], [None])
-padding_values = (tf.constant(0, tf.float32), tf.constant(0, tf.float32), tf.constant(-1, tf.int32))
-dataset = dataset.padded_batch(batch_size, padded_shapes=data_shapes, padding_values=padding_values)
+dataset = dataset.batch(1)
 dataset = iter(dataset)
 
 labels = ["bg"] + labels
@@ -50,42 +62,64 @@ dtn_model.load_weights(weights_dir + '/dtn_weights/weights')
 
 total_time = []
 mAP = []
-optimal_threshold = []
-threshold_lst = np.arange(0.5, 1.0, 0.05)
-progress_bar = tqdm(range(30))
+filename = "logistic_model.sav"
+loaded_model = joblib.load(filename)
+
+progress_bar = tqdm(range(3697))
 for _ in progress_bar:
-    img, gt_boxes, gt_labels = next(dataset)
+    img, gt_boxes, gt_labels, filenames = next(dataset)
     start_time = time.time()
     rpn_reg_output, rpn_cls_output, feature_map = rpn_model(img)
     roi_bboxes, _ = postprocessing_utils.RoIBBox(rpn_reg_output, rpn_cls_output, anchors, hyper_params)
     pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
     dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
-    final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=0.7)
 
-    filename = "logistic_model.sav"
-    loaded_model = joblib.load(filename)
+    features = model_utils.VectorizeFeatures()([feature_map, dtn_reg_output, dtn_cls_output])
+    threshold = float((loaded_model.predict(features)+10)/20)
+    final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=threshold)
 
     time_ = float(time.time() - start_time)*1000
-    AP = test_utils.calculate_AP50(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
+    AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
     total_time.append(time_)
     mAP.append(AP)
 
-    test_utils.draw_dtn_output(img, final_bboxes, labels, final_labels, final_scores, )
+    # test_utils.draw_dtn_output(img, final_bboxes, labels, final_labels, final_scores, )
 
 print("mAP: %.2f" % (tf.reduce_mean(mAP)))
 print("Time taken: %.2fms" % (tf.reduce_mean(total_time)))
 
 
 #%%
-def draw_custom_img(img_dir):
-    image = Image.open(img_dir)
-    image_ = np.array(image)
-    image_ = tf.convert_to_tensor(image_)
-    image_ = tf.image.resize(image_, (500,500))/ 255
-    img = tf.expand_dims(image_, axis=0)
-    rpn_reg_output, rpn_cls_output, feature_map = rpn_model(img)
-    roi_bboxes, _ = postprocessing_utils.RoIBBox(rpn_reg_output, rpn_cls_output, anchors, hyper_params)
-    pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
-    dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
-    final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params)
-    test_utils.draw_frcnn_output(img, final_bboxes, labels, final_labels, final_scores)
+threshold_lst = np.arange(0.5, 1.0, 0.05)
+for threshold in threshold_lst:
+    total_time = []
+    mAP = []
+    progress_bar = tqdm(range(3697))
+
+    dataset, labels = ship.fetch_dataset(dataset_name, "test", img_size)
+    dataset = dataset.map(lambda x, y, z, w: preprocessing_utils.preprocessing_ship(x, y, z, w))
+    dataset = dataset.batch(1)
+    dataset = iter(dataset)
+    print("Threshold: %.2f" % (threshold))
+
+    for _ in progress_bar: 
+        img, gt_boxes, gt_labels, filenames = next(dataset)
+        start_time = time.time()
+        rpn_reg_output, rpn_cls_output, feature_map = rpn_model(img)
+        roi_bboxes, _ = postprocessing_utils.RoIBBox(rpn_reg_output, rpn_cls_output, anchors, hyper_params)
+        pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
+        dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
+
+        features = model_utils.VectorizeFeatures()([feature_map, dtn_reg_output, dtn_cls_output])
+        threshold = float((loaded_model.predict(features)+10)/20)
+        final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=threshold)
+
+        time_ = float(time.time() - start_time)*1000
+        AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
+        total_time.append(time_)
+        mAP.append(AP)
+
+        # test_utils.draw_dtn_output(img, final_bboxes, labels, final_labels, final_scores, )
+
+    print("mAP: %.2f" % (tf.reduce_mean(mAP)))
+    print("Time taken: %.2fms" % (tf.reduce_mean(total_time)))
