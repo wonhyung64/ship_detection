@@ -82,9 +82,3 @@ for _ in progress_bar:
 
 print("mAP: %.2f" % (tf.reduce_mean(mAP)))
 
-# %%
-i = 0
-while True:
-    print(i)
-    i += 1
-    img, gt_boxes, gt_labels, filename = next(dataset)
