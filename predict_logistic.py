@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import ship, model_utils
+import joblib
 from numpy import mean, std
 from collections import Counter
 from sklearn.linear_model import LogisticRegression
@@ -40,3 +41,6 @@ cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
 n_scores = cross_val_score(model, X, y, scoring="accuracy", cv=cv, n_jobs=-1)
 
 print("Mean Accuracy: %.3f (%.3f)" % (mean(n_scores), std(n_scores)))
+
+filename = "logistic_model.sav"
+joblib.dump(model, filename)

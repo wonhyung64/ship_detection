@@ -3,6 +3,7 @@ import os
 import time
 import tensorflow as tf
 import numpy as np
+from PIL import Image
 from tqdm import tqdm
 
 import ship, etc_utils, model_utils, preprocessing_utils, postprocessing_utils, anchor_utils, test_utils
@@ -60,6 +61,9 @@ for _ in progress_bar:
     pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
     dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
     final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=0.7)
+
+    filename = "logistic_model.sav"
+    loaded_model = joblib.load(filename)
 
     time_ = float(time.time() - start_time)*1000
     AP = test_utils.calculate_AP50(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)

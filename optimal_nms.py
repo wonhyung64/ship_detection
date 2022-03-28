@@ -50,11 +50,9 @@ progress_bar = tqdm(range(10431))
 writer = tf.io.TFRecordWriter(f'C:/won/data/optimal_threshold/train.tfrecord'.encode("utf-8"))
 
 for _ in progress_bar:
-    try: img, gt_boxes, gt_labels, filename = next(dataset)
-    except: 
-        print("error occured")
-        continue
+    img, gt_boxes, gt_labels, filename = next(dataset)
     rpn_reg_output, rpn_cls_output, feature_map = rpn_model(img)
+    tf.squeeze(feature_map, axis=0)
     roi_bboxes, _ = postprocessing_utils.RoIBBox(rpn_reg_output, rpn_cls_output, anchors, hyper_params)
     pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
     dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
