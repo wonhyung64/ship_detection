@@ -14,8 +14,6 @@ dataset = tf.data.TFRecordDataset(f"{data_dir}".encode("unicode_escape")).map(sh
 dataset = dataset.batch(1)
 dataset = iter(dataset)
 
-#%%
-
 #%% generate data 
 X = []
 y = []
