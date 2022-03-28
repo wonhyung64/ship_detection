@@ -263,7 +263,7 @@ def fetch_dataset_v2(dataset, split, img_size, file_dir="D:/won/data", save_dir=
                             "bbox":bboxes,
                             "bbox_shape":bboxes.shape,
                             "label":labels,
-                            "filename":np.array(list(sample_name_))
+                            "filename":np.array([int(element) for element in list(sample_name_)])
                         }
 
                         info_ = {

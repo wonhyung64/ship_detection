@@ -6,7 +6,6 @@ from tqdm import tqdm
 
 import ship, etc_utils, model_utils, preprocessing_utils, postprocessing_utils, anchor_utils, test_utils
 
-
 #%% 
 hyper_params = etc_utils.get_hyper_params()
 hyper_params['anchor_count'] = len(hyper_params['anchor_ratios']) * len(hyper_params['anchor_scales'])
