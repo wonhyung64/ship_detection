@@ -49,8 +49,12 @@ optimal_threshold = []
 threshold_lst = np.arange(0.5, 1.0, 0.05)
 progress_bar = tqdm(range(10431))
 writer = tf.io.TFRecordWriter(f'C:/won/data/optimal_threshold/train.tfrecord'.encode("utf-8"))
+
 for _ in progress_bar:
-    img, gt_boxes, gt_labels, filename = next(dataset)
+    try: img, gt_boxes, gt_labels, filename = next(dataset)
+    except: 
+        print("error occured")
+        continue
     rpn_reg_output, rpn_cls_output, feature_map = rpn_model(img)
     roi_bboxes, _ = postprocessing_utils.RoIBBox(rpn_reg_output, rpn_cls_output, anchors, hyper_params)
     pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
@@ -74,8 +78,14 @@ for _ in progress_bar:
         "dtn_cls_output": tf.squeeze(dtn_cls_output, axis=0),
         "best_threshold": tf.constant(best_threshold, tf.float32),
     }
+
     writer.write(ship.serialize_feature(feature_dic))
 
 print("mAP: %.2f" % (tf.reduce_mean(mAP)))
 
 # %%
+i = 0
+while True:
+    print(i)
+    i += 1
+    img, gt_boxes, gt_labels, filename = next(dataset)
