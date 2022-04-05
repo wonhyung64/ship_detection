@@ -8,6 +8,7 @@ from numpy import mean, std
 from collections import Counter
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, RepeatedStratifiedKFold
+from sklearn.metrics import accuracy_score
 
 #%%
 data_dir = "C:\won\data\optimal_threshold\train.tfrecord"
@@ -22,6 +23,7 @@ while True:
     try:
         _, feature_map, dtn_reg_output, dtn_cls_output, best_threshold = next(dataset)
         features = model_utils.VectorizeFeatures()([feature_map, dtn_reg_output, dtn_cls_output])
+        features = features[...,512:]
         best_threshold = tf.cast(best_threshold * 20 - 10 , dtype=tf.int32)
         X.append(features)
         y.append(best_threshold)
@@ -36,11 +38,17 @@ print(X.shape, y.shape)
 print(Counter(y))
 
 #%%
-model = LogisticRegression(multi_class="multinomial", solver="lbfgs")
+model = LogisticRegression(multi_class="multinomial", solver="newton-cg")
 cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
 n_scores = cross_val_score(model, X, y, scoring="accuracy", cv=cv, n_jobs=-1)
 
 print("Mean Accuracy: %.3f (%.3f)" % (mean(n_scores), std(n_scores)))
 
+model.fit(X, y)
+
 filename = "logistic_model.sav"
 joblib.dump(model, filename)
+
+#%%
+y_hat = model.predict(X)
+accuracy_score(y, y_hat)
