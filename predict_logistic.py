@@ -1,5 +1,4 @@
 #%%
-import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import ship, model_utils
@@ -27,7 +26,6 @@ while True:
     try:
         _, feature_map, dtn_reg_output, dtn_cls_output, best_threshold = next(dataset)
         features = model_utils.VectorizeFeatures()([feature_map, dtn_reg_output, dtn_cls_output])
-        features = features[...,512:]
         best_threshold = tf.cast(best_threshold * 20 - 10 , dtype=tf.int32)
         X.append(features)
         y.append(best_threshold)
@@ -48,7 +46,6 @@ while True:
     try:
         _, feature_map, dtn_reg_output, dtn_cls_output, best_threshold = next(dataset_test)
         features = model_utils.VectorizeFeatures()([feature_map, dtn_reg_output, dtn_cls_output])
-        features = features[...,512:]
         best_threshold = tf.cast(best_threshold * 20 - 10 , dtype=tf.int32)
         test_X.append(features)
         test_y.append(best_threshold)
@@ -65,7 +62,49 @@ print(test_X.shape, test_y.shape)
 print(Counter(test_y))
 
 #%%
-model = LogisticRegression(multi_class="multinomial", solver="saga")
+X = []
+y = []
+while True:
+    try:
+        _, feature_map, dtn_reg_output, dtn_cls_output, best_threshold = next(dataset)
+        features = tf.reduce_sum(dtn_reg_output, axis=-1)
+        best_threshold = tf.cast(best_threshold * 20 - 10 , dtype=tf.int32)
+        X.append(features)
+        y.append(best_threshold)
+    except: break
+
+
+X = tf.concat(X, axis=0).numpy()
+y = tf.concat(y, axis=0).numpy().squeeze(axis=-1)
+_ = plt.hist(y, bins="auto")
+
+print(X.shape, y.shape)
+print(Counter(y))
+
+#%%
+test_X = []
+test_y = []
+while True:
+    try:
+        _, feature_map, dtn_reg_output, dtn_cls_output, best_threshold = next(dataset_test)
+        features = tf.reduce_sum(dtn_reg_output, axis=-1)
+        best_threshold = tf.cast(best_threshold * 20 - 10 , dtype=tf.int32)
+        test_X.append(features)
+        test_y.append(best_threshold)
+    except: break
+
+
+test_X = tf.concat(test_X, axis=0).numpy()
+test_y = tf.concat(test_y, axis=0).numpy().squeeze(axis=-1)
+test_y.shape
+
+_ = plt.hist(test_y, bins="auto")
+
+print(test_X.shape, test_y.shape)
+print(Counter(test_y))
+
+#%%
+model = LogisticRegression(multi_class="multinomial", solver="lbfgs")
 cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
 n_scores = cross_val_score(model, X, y, scoring="accuracy", cv=cv, n_jobs=-1)
 
