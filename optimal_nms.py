@@ -14,7 +14,7 @@ hyper_params["batch_size"] = batch_size = 1
 img_size = (hyper_params["img_size"], hyper_params["img_size"])
 dataset_name = hyper_params["dataset_name"]
 
-dataset, labels = ship.fetch_dataset_v2(dataset_name, "train", img_size)
+dataset, labels = ship.fetch_dataset_v2(dataset_name, "test", img_size)
 dataset = dataset.map(lambda x, y, z, w: preprocessing_utils.preprocessing_ship(x, y, z, w))
 dataset = dataset.batch(1)
 dataset = iter(dataset)
@@ -46,8 +46,8 @@ total_time = []
 mAP = []
 optimal_threshold = []
 threshold_lst = np.arange(0.5, 1.0, 0.05)
-progress_bar = tqdm(range(10431))
-writer = tf.io.TFRecordWriter(f'C:/won/data/optimal_threshold/train.tfrecord'.encode("utf-8"))
+progress_bar = tqdm(range(4000))
+writer = tf.io.TFRecordWriter(f'C:/won/data/optimal_threshold/test.tfrecord'.encode("utf-8"))
 
 for _ in progress_bar:
     img, gt_boxes, gt_labels, filename = next(dataset)

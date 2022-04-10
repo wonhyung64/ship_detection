@@ -16,6 +16,10 @@ dataset = tf.data.TFRecordDataset(f"{data_dir}".encode("unicode_escape")).map(sh
 dataset = dataset.batch(1)
 dataset = iter(dataset)
 
+test_dir = "C:\won\data\optimal_threshold\test.tfrecord"
+dataset_test = tf.data.TFRecordDataset(f"{test_dir}".encode("unicode_escape")).map(ship.deserialize_feature)
+dataset_test = dataset_test.batch(1)
+dataset_test = iter(dataset_test)
 #%% generate data 
 X = []
 y = []
@@ -38,7 +42,30 @@ print(X.shape, y.shape)
 print(Counter(y))
 
 #%%
-model = LogisticRegression(multi_class="multinomial", solver="newton-cg")
+test_X = []
+test_y = []
+while True:
+    try:
+        _, feature_map, dtn_reg_output, dtn_cls_output, best_threshold = next(dataset_test)
+        features = model_utils.VectorizeFeatures()([feature_map, dtn_reg_output, dtn_cls_output])
+        features = features[...,512:]
+        best_threshold = tf.cast(best_threshold * 20 - 10 , dtype=tf.int32)
+        test_X.append(features)
+        test_y.append(best_threshold)
+    except: break
+
+
+test_X = tf.concat(test_X, axis=0).numpy()
+test_y = tf.concat(test_y, axis=0).numpy().squeeze(axis=-1)
+test_y.shape
+
+_ = plt.hist(test_y, bins="auto")
+
+print(test_X.shape, test_y.shape)
+print(Counter(test_y))
+
+#%%
+model = LogisticRegression(multi_class="multinomial", solver="saga")
 cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
 n_scores = cross_val_score(model, X, y, scoring="accuracy", cv=cv, n_jobs=-1)
 
@@ -52,3 +79,6 @@ joblib.dump(model, filename)
 #%%
 y_hat = model.predict(X)
 accuracy_score(y, y_hat)
+
+test_y_hat = model.predict(test_X)
+accuracy_score(test_y, test_y_hat)

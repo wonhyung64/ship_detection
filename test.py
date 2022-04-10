@@ -75,6 +75,7 @@ for _ in progress_bar:
     dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
 
     features = model_utils.VectorizeFeatures()([feature_map, dtn_reg_output, dtn_cls_output])
+    features = features[...,512:]
     threshold = float((loaded_model.predict(features)+10)/20)
     final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=threshold)
 
@@ -111,6 +112,7 @@ for threshold in threshold_lst:
         dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
 
         features = model_utils.VectorizeFeatures()([feature_map, dtn_reg_output, dtn_cls_output])
+        features = features[...,512:]
         threshold = float((loaded_model.predict(features)+10)/20)
         final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=threshold)
 
