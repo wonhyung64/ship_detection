@@ -78,7 +78,7 @@ for _ in progress_bar:
         "best_threshold": tf.constant(best_threshold, tf.float32),
     }
 
-    writer.write(ship.serialize_features_v2(feature_dic))
+    writer.write(ship.serialize_feature_v2(feature_dic))
 
 print("mAP: %.2f" % (tf.reduce_mean(mAP)))
 
@@ -113,7 +113,7 @@ for _ in progress_bar:
         "best_threshold": tf.constant(best_threshold, tf.float32),
     }
 
-    writer.write(ship.serialize_features_v2(feature_dic))
+    writer.write(ship.serialize_feature_v2(feature_dic))
 
 print("mAP: %.2f" % (tf.reduce_mean(mAP)))
 
