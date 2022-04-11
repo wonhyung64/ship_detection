@@ -19,6 +19,16 @@ test_dir = "C:\won\data\optimal_threshold\test.tfrecord"
 dataset_test = tf.data.TFRecordDataset(f"{test_dir}".encode("unicode_escape")).map(ship.deserialize_feature)
 dataset_test = dataset_test.batch(1)
 dataset_test = iter(dataset_test)
+#%%
+data_dir = "C:\won\data\optimal_threshold\train_pooled_roi.tfrecord"
+dataset = tf.data.TFRecordDataset(f"{data_dir}".encode("unicode_escape")).map(ship.deserialize_feature_v2)
+dataset = dataset.batch(1)
+dataset = iter(dataset)
+
+test_dir = "C:\won\data\optimal_threshold\test_pooled_roi.tfrecord"
+dataset_test = tf.data.TFRecordDataset(f"{test_dir}".encode("unicode_escape")).map(ship.deserialize_feature_v2)
+dataset_test = dataset_test.batch(1)
+dataset_test = iter(dataset_test)
 #%% generate data 
 X = []
 y = []
@@ -102,6 +112,49 @@ _ = plt.hist(test_y, bins="auto")
 
 print(test_X.shape, test_y.shape)
 print(Counter(test_y))
+
+#%%
+X = []
+y = []
+while True:
+    try:
+        pooled_roi, best_threshold = next(dataset)
+        features = pooled_roi
+        best_threshold = tf.cast(best_threshold * 20 - 10 , dtype=tf.int32)
+        X.append(features)
+        y.append(best_threshold)
+    except: break
+
+
+X = tf.concat(X, axis=0).numpy()
+y = tf.concat(y, axis=0).numpy().squeeze(axis=-1)
+_ = plt.hist(y, bins="auto")
+
+print(X.shape, y.shape)
+print(Counter(y))
+
+#%%
+test_X = []
+test_y = []
+while True:
+    try:
+        pooled_roi, best_threshold = next(dataset_test)
+        features = pooled_roi
+        best_threshold = tf.cast(best_threshold * 20 - 10 , dtype=tf.int32)
+        test_X.append(features)
+        test_y.append(best_threshold)
+    except: break
+
+
+test_X = tf.concat(test_X, axis=0).numpy()
+test_y = tf.concat(test_y, axis=0).numpy().squeeze(axis=-1)
+test_y.shape
+
+_ = plt.hist(test_y, bins="auto")
+
+print(test_X.shape, test_y.shape)
+print(Counter(test_y))
+
 
 #%%
 model = LogisticRegression(multi_class="multinomial", solver="lbfgs")

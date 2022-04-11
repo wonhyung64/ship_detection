@@ -350,6 +350,4 @@ def deserialize_feature_v2(serialized_string):
     pooled_roi = tf.io.decode_raw(example["pooled_roi"], tf.float32)
     best_threshold = tf.io.decode_raw(example["best_threshold"], tf.float32)
 
-    pooled_roi = tf.reshape(pooled_roi, (1500, 7, 7, 512))
-
     return pooled_roi, best_threshold
