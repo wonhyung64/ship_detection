@@ -48,41 +48,41 @@ dtn_model.load_weights(weights_dir + '/dtn_weights/weights')
 # save_dir = os.getcwd()
 # save_dir = utils.generate_save_dir(save_dir, hyper_params)
 
-total_time = []
-mAP = []
-optimal_threshold = []
-threshold_lst = np.arange(0.5, 1.0, 0.05)
-progress_bar = tqdm(range(10430))
-writer = tf.io.TFRecordWriter(f'C:/won/data/optimal_threshold/train_pooled_roi.tfrecord'.encode("utf-8"))
+# total_time = []
+# mAP = []
+# optimal_threshold = []
+# threshold_lst = np.arange(0.5, 1.0, 0.05)
+# progress_bar = tqdm(range(10430))
+# writer = tf.io.TFRecordWriter(f'C:/won/data/optimal_threshold/train_pooled_roi.tfrecord'.encode("utf-8"))
 
-for _ in progress_bar:
-    img, gt_boxes, gt_labels, filename = next(dataset)
-    rpn_reg_output, rpn_cls_output, feature_map = rpn_model(img)
-    roi_bboxes, _ = postprocessing_utils.RoIBBox(rpn_reg_output, rpn_cls_output, anchors, hyper_params)
-    pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
-    dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
+# for _ in progress_bar:
+#     img, gt_boxes, gt_labels, filename = next(dataset)
+#     rpn_reg_output, rpn_cls_output, feature_map = rpn_model(img)
+#     roi_bboxes, _ = postprocessing_utils.RoIBBox(rpn_reg_output, rpn_cls_output, anchors, hyper_params)
+#     pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
+#     dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
 
-    pooled_roi = tf.reduce_sum(pooled_roi, axis=[-1, -2, -3])
+#     pooled_roi = tf.reduce_sum(pooled_roi, axis=[-1, -2, -3])
 
-    best_threshold = 0.
-    best_AP = 0.
-    for threshold in threshold_lst:
-        final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=threshold)
-        AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
-        if AP >= best_AP: 
-            best_threshold = threshold
-            best_AP = AP
-    mAP.append(best_AP)
-    optimal_threshold.append(best_threshold)
+#     best_threshold = 0.
+#     best_AP = 0.
+#     for threshold in threshold_lst:
+#         final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=threshold)
+#         AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
+#         if AP >= best_AP: 
+#             best_threshold = threshold
+#             best_AP = AP
+#     mAP.append(best_AP)
+#     optimal_threshold.append(best_threshold)
 
-    feature_dic = {
-        "pooled_roi": tf.squeeze(pooled_roi, axis=0),
-        "best_threshold": tf.constant(best_threshold, tf.float32),
-    }
+#     feature_dic = {
+#         "pooled_roi": tf.squeeze(pooled_roi, axis=0),
+#         "best_threshold": tf.constant(best_threshold, tf.float32),
+#     }
 
-    writer.write(ship.serialize_feature_v2(feature_dic))
+#     writer.write(ship.serialize_feature_v2(feature_dic))
 
-print("mAP: %.2f" % (tf.reduce_mean(mAP)))
+# print("mAP: %.2f" % (tf.reduce_mean(mAP)))
 
 #%%
 total_time = []
