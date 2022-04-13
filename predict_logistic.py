@@ -157,6 +157,9 @@ print(Counter(test_y))
 
 
 #%%
+X_ = X[:300, :]
+y_ = y[:300]
+
 model = LogisticRegression(multi_class="multinomial", solver="lbfgs")
 cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
 n_scores = cross_val_score(model, X, y, scoring="accuracy", cv=cv, n_jobs=-1)
@@ -164,6 +167,7 @@ n_scores = cross_val_score(model, X, y, scoring="accuracy", cv=cv, n_jobs=-1)
 print("Mean Accuracy: %.3f (%.3f)" % (mean(n_scores), std(n_scores)))
 
 model.fit(X, y)
+model.fit(X_, y_)
 
 filename = "logistic_model.sav"
 joblib.dump(model, filename)
@@ -171,6 +175,10 @@ joblib.dump(model, filename)
 #%%
 y_hat = model.predict(X)
 accuracy_score(y, y_hat)
+
+y_hat = model.predict(X_)
+accuracy_score(y_, y_hat)
+
 
 test_y_hat = model.predict(test_X)
 accuracy_score(test_y, test_y_hat)
