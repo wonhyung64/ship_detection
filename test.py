@@ -116,7 +116,7 @@ for _ in progress_bar:
             threshold_opt = threshold
             AP_opt = AP
     mAP_opt.append(AP_opt)
-    threshold_opt.append(threshold_opt_lst)
+    threshold_opt_lst.append(threshold_opt)
 
 
 print("\nOptimal threshold mAP: %.3f" % (tf.reduce_mean(mAP_opt)))
