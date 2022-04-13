@@ -86,10 +86,10 @@ dtn_model.load_weights(weights_dir + '/dtn_weights/weights')
 # print("Time taken: %.2fms" % (tf.reduce_mean(total_time)))
 
 #%%
-total_time = []
-mAP = []
-optimal_threshold = []
-threshold_lst = [0.5, 0.7]
+mAP_opt = []
+mAP_5 = []
+mAP_8 = []
+threshold_opt_lst = []
 progress_bar = tqdm(range(3696))
 
 for _ in progress_bar:
@@ -99,49 +99,26 @@ for _ in progress_bar:
     pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
     dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
 
-    best_threshold = 0.
-    best_AP = 0.
-    for threshold in threshold_lst:
+    final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=0.5)
+    AP = test_utils.calculate_AP_const(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params, 0.95)
+    mAP_5.append(AP)
+
+    final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=0.8)
+    AP = test_utils.calculate_AP_const(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params, 0.95)
+    mAP_8.append(AP)
+
+    threshold_opt = 0.
+    AP_opt = 0.
+    for threshold in threshold_opt_lst:
         final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=threshold)
-        AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
-        if AP >= best_AP: 
-            best_threshold = threshold
-            best_AP = AP
-    mAP.append(best_AP)
-    optimal_threshold.append(best_threshold)
+        AP = test_utils.calculate_AP_const(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params, 0.95)
+        if AP >= AP_opt: 
+            threshold_opt = threshold
+            AP_opt = AP
+    mAP_opt.append(AP_opt)
+    threshold_opt.append(threshold_opt_lst)
 
-print("mAP: %.3f" % (tf.reduce_mean(mAP)))
 
-#%%
-threshold_lst = [0.5, 0.7]
-for threshold in threshold_lst:
-    total_time = []
-    mAP = []
-    progress_bar = tqdm(range(3696))
-
-    dataset, labels = ship.fetch_dataset(dataset_name, "test", img_size)
-    dataset = dataset.map(lambda x, y, z, w: preprocessing_utils.preprocessing_ship(x, y, z, w))
-    dataset = dataset.batch(1)
-    dataset = iter(dataset)
-    print("Threshold: %.2f" % (threshold))
-
-    for _ in progress_bar: 
-        img, gt_boxes, gt_labels, filenames = next(dataset)
-        start_time = time.time()
-        rpn_reg_output, rpn_cls_output, feature_map = rpn_model(img)
-        roi_bboxes, _ = postprocessing_utils.RoIBBox(rpn_reg_output, rpn_cls_output, anchors, hyper_params)
-        pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
-        dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
-
-        final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=threshold)
-
-        time_ = float(time.time() - start_time)*1000
-        AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
-        total_time.append(time_)
-        mAP.append(AP)
-
-        # test_utils.draw_dtn_output(img, final_bboxes, labels, final_labels, final_scores, )
-
-    print("mAP: %.3f" % (tf.reduce_mean(mAP)))
-    print("Time taken: %.2fms" % (tf.reduce_mean(total_time)))
-
+print("\nOptimal threshold mAP: %.3f" % (tf.reduce_mean(mAP_opt)))
+print("\n0.5 threshold mAP: %.3f" % (tf.reduce_mean(mAP_5)))
+print("\n0.8 threshold mAP: %.3f" % (tf.reduce_mean(mAP_8)))
