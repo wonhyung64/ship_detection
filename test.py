@@ -1,9 +1,7 @@
 #%% 
 import os
-import time
 import tensorflow as tf
 import numpy as np
-import joblib
 from PIL import Image
 from tqdm import tqdm
 
@@ -87,10 +85,11 @@ dtn_model.load_weights(weights_dir + '/dtn_weights/weights')
 
 #%%
 mAP_opt = []
-mAP_5 = []
-mAP_8 = []
+mAP_0 = []
+mAP_1 = []
 threshold_opt_lst = []
 progress_bar = tqdm(range(3696))
+thresholds = [0.5, 0.8]
 
 for _ in progress_bar:
     img, gt_boxes, gt_labels, filename = next(dataset)
@@ -99,19 +98,19 @@ for _ in progress_bar:
     pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
     dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
 
-    final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=0.5)
-    AP = test_utils.calculate_AP_const(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params, 0.95)
-    mAP_5.append(AP)
+    final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=thresholds[0])
+    AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
+    mAP_0.append(AP)
 
-    final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=0.8)
-    AP = test_utils.calculate_AP_const(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params, 0.95)
-    mAP_8.append(AP)
+    final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=thresholds[1])
+    AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
+    mAP_1.append(AP)
 
     threshold_opt = 0.
     AP_opt = 0.
-    for threshold in threshold_opt_lst:
+    for threshold in thresholds:
         final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=threshold)
-        AP = test_utils.calculate_AP_const(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params, 0.95)
+        AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
         if AP >= AP_opt: 
             threshold_opt = threshold
             AP_opt = AP
@@ -119,6 +118,6 @@ for _ in progress_bar:
     threshold_opt_lst.append(threshold_opt)
 
 
-print("\nOptimal threshold mAP: %.3f" % (tf.reduce_mean(mAP_opt)))
-print("\n0.5 threshold mAP: %.3f" % (tf.reduce_mean(mAP_5)))
-print("\n0.8 threshold mAP: %.3f" % (tf.reduce_mean(mAP_8)))
+print(f"\nOptimal threshold mAP: %.3f" % (tf.reduce_mean(mAP_opt)))
+print(f"\n{thresholds[0]} threshold mAP: %.3f" % (tf.reduce_mean(mAP_0)))
+print(f"\n{thresholds[1]} threshold mAP: %.3f" % (tf.reduce_mean(mAP_1)))
