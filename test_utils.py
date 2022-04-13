@@ -113,9 +113,8 @@ def calculate_AP_per_class(recall, precision):
     return AP
 
 #%%
-def calculate_AP50(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params):
+def calculate_AP_const(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params, mAP_threshold=0.5):
     total_labels = hyper_params["total_labels"]
-    mAP_threshold = hyper_params["mAP_threshold"]
     AP = []
     for c in range(1, total_labels):
         if tf.math.reduce_any(final_labels == c) or tf.math.reduce_any(gt_labels == c):
