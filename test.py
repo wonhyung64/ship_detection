@@ -87,9 +87,10 @@ dtn_model.load_weights(weights_dir + '/dtn_weights/weights')
 mAP_opt = []
 mAP_0 = []
 mAP_1 = []
+mAP_2 = []
 threshold_opt_lst = []
 progress_bar = tqdm(range(3696))
-thresholds = [0.5, 0.8]
+thresholds = [0.5, 0.65, 0.8]
 
 for _ in progress_bar:
     img, gt_boxes, gt_labels, filename = next(dataset)
@@ -106,6 +107,10 @@ for _ in progress_bar:
     AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
     mAP_1.append(AP)
 
+    final_bboxes, final_labels, final_scores = postprocessing_utils.Decode(dtn_reg_output, dtn_cls_output, roi_bboxes, hyper_params, iou_threshold=thresholds[2])
+    AP = test_utils.calculate_AP(final_bboxes, final_labels, gt_boxes, gt_labels, hyper_params)
+    mAP_2.append(AP)
+
     threshold_opt = 0.
     AP_opt = 0.
     for threshold in thresholds:
@@ -121,3 +126,4 @@ for _ in progress_bar:
 print(f"\nOptimal threshold mAP: %.3f" % (tf.reduce_mean(mAP_opt)))
 print(f"\n{thresholds[0]} threshold mAP: %.3f" % (tf.reduce_mean(mAP_0)))
 print(f"\n{thresholds[1]} threshold mAP: %.3f" % (tf.reduce_mean(mAP_1)))
+print(f"\n{thresholds[2]} threshold mAP: %.3f" % (tf.reduce_mean(mAP_2)))
