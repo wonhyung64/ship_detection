@@ -287,15 +287,15 @@ def fetch_dataset_v2(dataset, split, img_size, file_dir="D:/won/data", save_dir=
 
 #%%
 def serialize_feature(dic):
-    filename = np.array(dic["filename"]).tobytes()
     feature_map = np.array(dic["feature_map"]).tobytes()
+    pooled_roi = np.array(dic["pooled_roi"]).tobytes()
     dtn_reg_output = np.array(dic["dtn_reg_output"]).tobytes()
     dtn_cls_output = np.array(dic["dtn_cls_output"]).tobytes()
     best_threshold = np.array(dic["best_threshold"]).tobytes()
 
     feature_dict={
-        'filename': tf.train.Feature(bytes_list=tf.train.BytesList(value=[filename])),
         'feature_map': tf.train.Feature(bytes_list=tf.train.BytesList(value=[feature_map])),
+        'pooled_roi': tf.train.Feature(bytes_list=tf.train.BytesList(value=[pooled_roi])),
         'dtn_reg_output': tf.train.Feature(bytes_list=tf.train.BytesList(value=[dtn_reg_output])),
         'dtn_cls_output': tf.train.Feature(bytes_list=tf.train.BytesList(value=[dtn_cls_output])),
         'best_threshold': tf.train.Feature(bytes_list=tf.train.BytesList(value=[best_threshold])),
@@ -307,47 +307,24 @@ def serialize_feature(dic):
 #%%
 def deserialize_feature(serialized_string):
     image_feature_description = { 
-        'filename': tf.io.FixedLenFeature([], tf.string), 
         'feature_map': tf.io.FixedLenFeature([], tf.string), 
+        'pooled_roi': tf.io.FixedLenFeature([], tf.string),
         'dtn_reg_output': tf.io.FixedLenFeature([], tf.string), 
         'dtn_cls_output': tf.io.FixedLenFeature([], tf.string),
         'best_threshold': tf.io.FixedLenFeature([], tf.string),
     } 
     example = tf.io.parse_single_example(serialized_string, image_feature_description) 
 
-    filename = tf.io.decode_raw(example["filename"], tf.int32)
     feature_map = tf.io.decode_raw(example["feature_map"], tf.float32)
+    pooled_roi = tf.io.decode_raw(example["pooled_roi"], tf.float32)
     dtn_reg_output = tf.io.decode_raw(example["dtn_reg_output"], tf.float32) 
     dtn_cls_output = tf.io.decode_raw(example["dtn_cls_output"], tf.float32)
     best_threshold = tf.io.decode_raw(example["best_threshold"], tf.float32)
 
     feature_map = tf.reshape(feature_map, (31, 31, 512))
+    pooled_roi = tf.reshape(pooled_roi, (1500, 7, 7))
     dtn_reg_output = tf.reshape(dtn_reg_output, (1500, 16))
     dtn_cls_output = tf.reshape(dtn_cls_output, (1500, 4))
 
-    return filename, feature_map, dtn_reg_output, dtn_cls_output, best_threshold
+    return feature_map, pooled_roi, dtn_reg_output, dtn_cls_output, best_threshold
 
-def serialize_feature_v2(dic):
-    pooled_roi = np.array(dic["pooled_roi"]).tobytes()
-    best_threshold = np.array(dic["best_threshold"]).tobytes()
-
-    feature_dict={
-        'pooled_roi': tf.train.Feature(bytes_list=tf.train.BytesList(value=[pooled_roi])),
-        'best_threshold': tf.train.Feature(bytes_list=tf.train.BytesList(value=[best_threshold])),
-    }
-
-    example = tf.train.Example(features=tf.train.Features(feature=feature_dict)) 
-    return example.SerializeToString()
-
-#%%
-def deserialize_feature_v2(serialized_string):
-    image_feature_description = { 
-        'pooled_roi': tf.io.FixedLenFeature([], tf.string),
-        'best_threshold': tf.io.FixedLenFeature([], tf.string),
-    } 
-    example = tf.io.parse_single_example(serialized_string, image_feature_description) 
-
-    pooled_roi = tf.io.decode_raw(example["pooled_roi"], tf.float32)
-    best_threshold = tf.io.decode_raw(example["best_threshold"], tf.float32)
-
-    return pooled_roi, best_threshold
