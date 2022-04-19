@@ -108,7 +108,8 @@ thresholds = [0.5, 0.7]
 print(f"\nExtract Train sets")
 writer = tf.io.TFRecordWriter(f'C:/won/data/optimal_threshold/train_binary.tfrecord'.encode("utf-8"))
 for _ in progress_bar:
-    img, gt_boxes, gt_labels, filename = next(dataset)
+    try: img, gt_boxes, gt_labels, filename = next(dataset)
+    except: continue
     rpn_reg_output, rpn_cls_output, feature_map = rpn_model(img)
     roi_bboxes, _ = postprocessing_utils.RoIBBox(rpn_reg_output, rpn_cls_output, anchors, hyper_params)
     pooled_roi = postprocessing_utils.RoIAlign(roi_bboxes, feature_map, hyper_params)
