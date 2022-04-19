@@ -86,7 +86,7 @@ for _ in progress_bar:
         "feature_map": tf.squeeze(feature_map, axis=0),
         "pooled_roi": tf.squeeze(pooled_roi, axis=0),
         "dtn_reg_output": tf.squeeze(dtn_reg_output, axis=0),
-        "dtn_cls_output": tf.squeeze(dtn_reg_output, axis=0),
+        "dtn_cls_output": tf.squeeze(dtn_cls_output, axis=0),
         "best_threshold": tf.constant(threshold_opt, tf.float32),
     }
 
@@ -139,7 +139,7 @@ for _ in progress_bar:
         "feature_map": tf.squeeze(feature_map, axis=0),
         "pooled_roi": tf.squeeze(pooled_roi, axis=0),
         "dtn_reg_output": tf.squeeze(dtn_reg_output, axis=0),
-        "dtn_cls_output": tf.squeeze(dtn_reg_output, axis=0),
+        "dtn_cls_output": tf.squeeze(dtn_cls_output, axis=0),
         "best_threshold": tf.constant(threshold_opt, tf.float32),
     }
 
