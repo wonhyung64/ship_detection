@@ -11,7 +11,6 @@ from tqdm import tqdm
 #%%
 def serialize_example(dic):
     image = dic["image"].tobytes()
-    image_shape = np.array(dic["image_shape"]).tobytes()
     bbox = dic["bbox"].tobytes()
     bbox_shape = np.array(dic["bbox_shape"]).tobytes()
     label = dic["label"].tobytes()
@@ -19,7 +18,6 @@ def serialize_example(dic):
 
     feature_dict={
         'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image])),
-        'image_shape': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image_shape])),
         'bbox': tf.train.Feature(bytes_list=tf.train.BytesList(value=[bbox])),
         'bbox_shape': tf.train.Feature(bytes_list=tf.train.BytesList(value=[bbox_shape])),
         'label': tf.train.Feature(bytes_list=tf.train.BytesList(value=[label])),
@@ -73,7 +71,7 @@ def fetch_dataset(name, split, img_size, file_dir="D:/won/data"):
 
     save_dir = f"{file_dir}/{name}_{img_size[0]}_{img_size[1]}"
 
-    if os.path.exists(save_dir) == False:
+    if not(os.path.exists(save_dir)):
         os.mkdirs(save_dir, exist_ok=True)
         label_dict = {}
 
@@ -105,58 +103,16 @@ def fetch_dataset(name, split, img_size, file_dir="D:/won/data"):
                         sample_name_ = re.sub(r'[^0-9]', '', sample_name)
                         sample = f"{folder_dir}/{sample_name}"
 
-                        #jpg
-                        img_ = Image.open(sample + ".jpg")
-                        img_ = tf.convert_to_tensor(np.array(img_, dtype=np.int32))
-                        img_ = tf.image.resize(img_, img_size) / 255
-                        norm_mean = (0.4738637621963933, 0.5181327285241354, 0.5290525313499966)
-                        norm_mean = tf.expand_dims(tf.expand_dims(tf.constant(norm_mean), axis=0), axis=0)
-                        norm_std = (0.243976435460058, 0.23966295898251888, 0.24247457088379498)
-                        norm_std = tf.expand_dims(tf.expand_dims(tf.constant(norm_std), axis=0), axis=0)
-                        norm_img = (img_ - norm_mean) / norm_std
-                        img = np.array(norm_img)
-
-                        #xml
-                        tree = elemTree.parse(sample + ".xml")
-                        root = tree.getroot()
-                        bboxes_ = []
-                        labels_ = []
-                        for x in root:
-                            if x.tag == "object":
-                                for y in x:
-                                    # print("--", y.tag)
-                                    if y.tag == "bndbox":
-                                        bbox_ = [int(z.text) for z in y] 
-                                        bbox = [bbox_[1] / 2160 , bbox_[0] / 3840, bbox_[3] / 2160, bbox_[2] / 3840]
-                                        # print("----", bbox)
-                                        bboxes_.append(bbox)
-                                    if y.tag == "category_id":
-                                        # print("----", y.text)
-                                        label = int(y.text)
-                                        labels_.append(label)
-                                    if y.tag == "name": 
-                                        label_dict[str(label)] = y.text
-                        bboxes = np.array(bboxes_, dtype=np.float32)
-                        labels = np.array(labels_, dtype=np.int32)
-                        bboxes = bboxes[labels == 2]
-                        labels = labels[labels == 2] - 2
-
-                        #json
-                        with open(sample + "_meta.json", "r", encoding="UTF8") as st_json:
-                            st_python = json.load(st_json)
-                        st_python["Date"]
-                        time = st_python["Date"][11:-1]
-                        weather = st_python["Weather"]
-                        season = st_python["Season"]
+                        image = extract_image(sample, img_size)
+                        bboxes, labels, label_dict = extract_annot(sample, label_dict)
 
                         #to_dictionary
                         dic = {
-                            "image":img,
-                            "image_shape":img.shape,
-                            "bbox":bboxes,
-                            "bbox_shape":bboxes.shape,
-                            "label":labels,
-                            "filename":np.array([int(element) for element in list(sample_name_)])
+                            "image": image,
+                            "bbox": bboxes,
+                            "bbox_shape": bboxes.shape,
+                            "label": labels,
+                            "filename": np.array([int(element) for element in list(sample_name_)])
                         }
 
                         writer.write(serialize_example(dic))
@@ -166,4 +122,49 @@ def fetch_dataset(name, split, img_size, file_dir="D:/won/data"):
 
     return dataset, labels
 
-eval("[1,3,4,5,6]")
+
+def extract_annot(sample, label_dict):
+    #xml
+    tree = elemTree.parse(f"{sample}.xml")
+    root = tree.getroot()
+    bboxes_ = []
+    labels_ = []
+    for x in root:
+        if x.tag == "object":
+            for y in x:
+                if y.tag == "bndbox":
+                    bbox_ = [int(z.text) for z in y] 
+                    bbox = [bbox_[1] / 2160 , bbox_[0] / 3840, bbox_[3] / 2160, bbox_[2] / 3840]
+                    bboxes_.append(bbox)
+                if y.tag == "category_id":
+                    label = int(y.text)
+                    labels_.append(label)
+                if y.tag == "name": 
+                    label_dict[str(label)] = y.text
+    bboxes = np.array(bboxes_, dtype=np.float32)
+    labels = np.array(labels_, dtype=np.int32)
+    bboxes = bboxes[labels == 2]
+    labels = labels[labels == 2] - 2
+
+    return bboxes, labels, label_dict
+
+
+def extract_image(sample, img_size):
+    #jpg
+    image = Image.open(f"{sample}.jpg")
+    image = tf.convert_to_tensor(np.array(image, dtype=np.int32))
+    image = tf.image.resize(image, img_size) / 255
+    # image = normalize_image(image)
+    image = np.array(image)
+
+    return image
+
+
+def normalize_image(image):
+    norm_mean = (0.4738637621963933, 0.5181327285241354, 0.5290525313499966)
+    norm_mean = tf.expand_dims(tf.expand_dims(tf.constant(norm_mean), axis=0), axis=0)
+    norm_std = (0.243976435460058, 0.23966295898251888, 0.24247457088379498)
+    norm_std = tf.expand_dims(tf.expand_dims(tf.constant(norm_std), axis=0), axis=0)
+    norm_img = (image - norm_mean) / norm_std
+
+    return norm_img
