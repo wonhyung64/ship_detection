@@ -1,5 +1,5 @@
 import re
-import os 
+import os
 import json
 import numpy as np
 import tensorflow as tf
@@ -11,17 +11,30 @@ from tqdm import tqdm
 def fetch_dataset(img_size, file_dir="D:/won/data"):
     save_dir = f"{file_dir}/ship_{img_size[0]}_{img_size[1]}"
 
-    if not(os.path.exists(save_dir)):
+    if not (os.path.exists(save_dir)):
         os.makedirs(save_dir, exist_ok=True)
 
         file_sub_dirs = extract_sub_dir(file_dir)
         train_dir_idx, valid_dir_idx, test_dir_idx = get_split_idx(file_sub_dirs)
-        label_dict = write_datasets(train_dir_idx, valid_dir_idx, test_dir_idx, save_dir, file_sub_dirs, img_size)
+        label_dict = write_datasets(
+            train_dir_idx,
+            valid_dir_idx,
+            test_dir_idx,
+            save_dir,
+            file_sub_dirs,
+            img_size,
+        )
         write_labels(save_dir, label_dict)
 
-    train = tf.data.TFRecordDataset(f"{save_dir}/train.tfrecord".encode("utf-8")).map(deserialize_example)
-    validation = tf.data.TFRecordDataset(f"{save_dir}/validation.tfrecord".encode("utf-8")).map(deserialize_example)
-    test = tf.data.TFRecordDataset(f"{save_dir}/test.tfrecord".encode("utf-8")).map(deserialize_example)
+    train = tf.data.TFRecordDataset(f"{save_dir}/train.tfrecord".encode("utf-8")).map(
+        deserialize_example
+    )
+    validation = tf.data.TFRecordDataset(
+        f"{save_dir}/validation.tfrecord".encode("utf-8")
+    ).map(deserialize_example)
+    test = tf.data.TFRecordDataset(f"{save_dir}/test.tfrecord".encode("utf-8")).map(
+        deserialize_example
+    )
     labels = read_labels(save_dir)
 
     return train, validation, test, labels
@@ -47,41 +60,51 @@ def get_split_idx(file_sub_dirs):
     return train_dir_idx, valid_dir_idx, test_dir_idx
 
 
-def write_datasets(train_dir_idx, valid_dir_idx, test_dir_idx, save_dir, file_sub_dirs, img_size):
+def write_datasets(
+    train_dir_idx, valid_dir_idx, test_dir_idx, save_dir, file_sub_dirs, img_size
+):
     label_dict = {}
-    for split_idx, split_name in ((train_dir_idx, "train"), (valid_dir_idx, "validation"), (test_dir_idx, "test")):
-        writer = tf.io.TFRecordWriter(f'{save_dir}/{split_name}.tfrecord'.encode("utf-8"))
-        split_progress = tqdm(range(len(split_idx)))
-        split_progress.set_description(
-            f"Fetch {split_name} set"
+    for split_idx, split_name in (
+        (train_dir_idx, "train"),
+        (valid_dir_idx, "validation"),
+        (test_dir_idx, "test"),
+    ):
+        writer = tf.io.TFRecordWriter(
+            f"{save_dir}/{split_name}.tfrecord".encode("utf-8")
         )
+        split_progress = tqdm(range(len(split_idx)))
+        split_progress.set_description(f"Fetch {split_name} set")
         for i in split_progress:
             folder_dir = file_sub_dirs[split_idx[i]]
             folder_conts = os.listdir(folder_dir)
-            filename_lst = sorted(list(set([folder_conts[l][:25] for l in range(len(folder_conts))])))
+            filename_lst = sorted(
+                list(set([folder_conts[l][:25] for l in range(len(folder_conts))]))
+            )
             for j in range(len(filename_lst)):
                 if j % 3 == 0:
                     sample_name = filename_lst[j]
-                    sample_name_ = re.sub(r'[^0-9]', '', sample_name)
+                    sample_name_ = re.sub(r"[^0-9]", "", sample_name)
                     sample = f"{folder_dir}/{sample_name}"
 
                     image = extract_image(sample, img_size)
                     bboxes, labels, label_dict = extract_annot(sample, label_dict)
-                    #to_dictionary
+                    # to_dictionary
                     dic = {
                         "image": image,
                         "image_shape": image.shape,
                         "bbox": bboxes,
                         "bbox_shape": bboxes.shape,
                         "label": labels,
-                        "filename": np.array([int(element) for element in list(sample_name_)])
+                        "filename": np.array(
+                            [int(element) for element in list(sample_name_)]
+                        ),
                     }
 
                     writer.write(serialize_example(dic))
 
 
 def extract_image(sample, img_size):
-    #jpg
+    # jpg
     image = Image.open(f"{sample}.jpg")
     image = tf.convert_to_tensor(np.array(image, dtype=np.int32))
     image = tf.image.resize(image, img_size) / 255
@@ -102,7 +125,7 @@ def normalize_image(image):
 
 
 def extract_annot(sample, label_dict):
-    #xml
+    # xml
     tree = elemTree.parse(f"{sample}.xml")
     root = tree.getroot()
     bboxes_ = []
@@ -111,13 +134,18 @@ def extract_annot(sample, label_dict):
         if x.tag == "object":
             for y in x:
                 if y.tag == "bndbox":
-                    bbox_ = [int(z.text) for z in y] 
-                    bbox = [bbox_[1] / 2160 , bbox_[0] / 3840, bbox_[3] / 2160, bbox_[2] / 3840]
+                    bbox_ = [int(z.text) for z in y]
+                    bbox = [
+                        bbox_[1] / 2160,
+                        bbox_[0] / 3840,
+                        bbox_[3] / 2160,
+                        bbox_[2] / 3840,
+                    ]
                     bboxes_.append(bbox)
                 if y.tag == "category_id":
                     label = int(y.text)
                     labels_.append(label)
-                if y.tag == "name": 
+                if y.tag == "name":
                     label_dict[label] = y.text
     bboxes = np.array(bboxes_, dtype=np.float32)
     labels = np.array(labels_, dtype=np.int32)
@@ -133,16 +161,20 @@ def serialize_example(dic):
     label = dic["label"].tobytes()
     filename = dic["filename"].tobytes()
 
-    feature_dict={
-        'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image])),
-        'image_shape': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image_shape])),
-        'bbox': tf.train.Feature(bytes_list=tf.train.BytesList(value=[bbox])),
-        'bbox_shape': tf.train.Feature(bytes_list=tf.train.BytesList(value=[bbox_shape])),
-        'label': tf.train.Feature(bytes_list=tf.train.BytesList(value=[label])),
-        'filename': tf.train.Feature(bytes_list=tf.train.BytesList(value=[filename])),
+    feature_dict = {
+        "image": tf.train.Feature(bytes_list=tf.train.BytesList(value=[image])),
+        "image_shape": tf.train.Feature(
+            bytes_list=tf.train.BytesList(value=[image_shape])
+        ),
+        "bbox": tf.train.Feature(bytes_list=tf.train.BytesList(value=[bbox])),
+        "bbox_shape": tf.train.Feature(
+            bytes_list=tf.train.BytesList(value=[bbox_shape])
+        ),
+        "label": tf.train.Feature(bytes_list=tf.train.BytesList(value=[label])),
+        "filename": tf.train.Feature(bytes_list=tf.train.BytesList(value=[filename])),
     }
 
-    example = tf.train.Example(features=tf.train.Features(feature=feature_dict)) 
+    example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
 
     return example.SerializeToString()
 
@@ -153,33 +185,33 @@ def write_labels(save_dir, label_dict):
 
 
 def deserialize_example(serialized_string):
-    image_feature_description = { 
-        'image': tf.io.FixedLenFeature([], tf.string), 
-        'image_shape': tf.io.FixedLenFeature([], tf.string), 
-        'bbox': tf.io.FixedLenFeature([], tf.string), 
-        'bbox_shape': tf.io.FixedLenFeature([], tf.string), 
-        'label': tf.io.FixedLenFeature([], tf.string), 
-        'filename': tf.io.FixedLenFeature([], tf.string),
-    } 
-    example = tf.io.parse_single_example(serialized_string, image_feature_description) 
+    image_feature_description = {
+        "image": tf.io.FixedLenFeature([], tf.string),
+        "image_shape": tf.io.FixedLenFeature([], tf.string),
+        "bbox": tf.io.FixedLenFeature([], tf.string),
+        "bbox_shape": tf.io.FixedLenFeature([], tf.string),
+        "label": tf.io.FixedLenFeature([], tf.string),
+        "filename": tf.io.FixedLenFeature([], tf.string),
+    }
+    example = tf.io.parse_single_example(serialized_string, image_feature_description)
 
     image = tf.io.decode_raw(example["image"], tf.float32)
     image_shape = tf.io.decode_raw(example["image_shape"], tf.int32)
     bbox = tf.io.decode_raw(example["bbox"], tf.float32)
     bbox_shape = tf.io.decode_raw(example["bbox_shape"], tf.int32)
-    label = tf.io.decode_raw(example["label"], tf.int32) 
+    label = tf.io.decode_raw(example["label"], tf.int32)
     filename = tf.io.decode_raw(example["filename"], tf.int32)
 
     image = tf.reshape(image, image_shape)
     bbox = tf.reshape(bbox, bbox_shape)
-    
+
     return image, bbox, label, filename
 
 
 def read_labels(save_dir):
     with open(f"{save_dir}/labels.txt", "r") as f:
         labels = eval(f.readline())
-    
+
     return labels
 
 
