@@ -102,6 +102,8 @@ def write_datasets(
 
                     writer.write(serialize_example(dic))
 
+    return label_dict
+
 
 def extract_image(sample, img_size):
     # jpg
@@ -216,4 +218,8 @@ def read_labels(save_dir):
 
 
 if __name__ == "__main__":
-    fetch_dataset([500, 500])
+    train, valid, test, labels = fetch_dataset([500, 500])
+    print(train)
+    print(valid)
+    print(test)
+    print(labels)
