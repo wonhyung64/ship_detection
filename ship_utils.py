@@ -215,11 +215,3 @@ def read_labels(save_dir):
         labels = eval(f.readline())
 
     return labels
-
-
-if __name__ == "__main__":
-    train, valid, test, labels = fetch_dataset([500, 500])
-    print(train)
-    print(valid)
-    print(test)
-    print(labels)
