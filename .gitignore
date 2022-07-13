@@ -11,3 +11,6 @@ __pycache__/
 .DS_Store
 /frcnn_atmp
 /saved_model
+.neptune/
+data_chkr/
+models/
