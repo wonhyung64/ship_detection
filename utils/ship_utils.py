@@ -11,6 +11,74 @@ from models.faster_rcnn.utils import (
     rand_flip_horiz,
 )
 
+def build_sample_set(name, file_dir, img_size):
+    save_dir = f"{file_dir}/{name}_{img_size[0]}_{img_size[1]}"
+
+    if not (os.path.exists(save_dir)):
+        os.makedirs(save_dir, exist_ok=True)
+        file_sub_dir = f"{file_dir}/test_image"
+        writer = tf.io.TFRecordWriter(
+            f"{save_dir}/sample.tfrecord".encode("utf-8")
+        )
+        for content in os.listdir(file_sub_dir):
+            image_dir = f"{file_sub_dir}/{content}"
+            image = Image.open(image_dir)
+            image = tf.convert_to_tensor(np.array(image, dtype=np.int32)) / 25
+            image = np.array(image)
+            dic = {
+                "image": image,
+                "image_shape": image.shape,
+            }
+            image = dic["image"].tobytes()
+            image_shape = np.array(dic["image_shape"]).tobytes()
+            feature_dict = {
+                "image": tf.train.Feature(bytes_list=tf.train.BytesList(value=[image])),
+                "image_shape": tf.train.Feature(
+                    bytes_list=tf.train.BytesList(value=[image_shape])
+                ),
+            }
+            example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
+
+            writer.write(example.SerializeToString())
+
+    sample = tf.data.TFRecordDataset(f"{save_dir}/sample.tfrecord".encode("utf-8")).map(
+        deserialize_sample
+    )
+    labels = read_labels(save_dir)
+    labels = preprocess_labels(labels)
+
+    data_shapes = ([None, None, None])
+    padding_values = (
+        tf.constant(0, tf.float32),
+    )
+    sample = sample.repeat().padded_batch(
+        batch_size=1,
+        padded_shapes=data_shapes,
+        padding_values=padding_values,
+        drop_remainder=True,
+    )
+
+    sample = sample.prefetch(tf.data.experimental.AUTOTUNE)
+    
+    sample = iter(sample)
+
+    return sample, labels
+
+
+def deserialize_sample(serialized_string):
+    image_feature_description = {
+        "image": tf.io.FixedLenFeature([], tf.string),
+        "image_shape": tf.io.FixedLenFeature([], tf.string),
+    }
+    example = tf.io.parse_single_example(serialized_string, image_feature_description)
+
+    image = tf.io.decode_raw(example["image"], tf.float32)
+    image_shape = tf.io.decode_raw(example["image_shape"], tf.int32)
+
+    image = tf.reshape(image, image_shape)
+
+    return image
+
 
 def load_ship_dataset(name, data_dir, img_size):
     train_set, valid_set, test_set, labels = fetch_dataset(img_size, data_dir)
