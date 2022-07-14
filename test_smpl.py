@@ -28,13 +28,16 @@ def main():
 
     weights_dir = "/home1/wonhyung64/data/ship_weights"
 
-    test_set, labels = build_sample_set(args.name, args.data_dir, args.img_size)
+    test_set = build_sample_set(args.name, args.data_dir, args.img_size)
+    labels = [
+        "buoy", "ship", "others"
+    ]
     anchors = build_anchors(args)
 
     rpn_model, dtn_model = build_models(args, len(labels))
 
-    rpn_model.load_weights(f"{weights_dir}_MOD_90_rpn.h5")
-    dtn_model.load_weights(f"{weights_dir}_MOD_90_dtn.h5")
+    rpn_model.load_weights(f"{weights_dir}/MOD_90_rpn.h5")
+    dtn_model.load_weights(f"{weights_dir}/MOD_90_dtn.h5")
 
     mean_test_time = test(run, 360, test_set, rpn_model, dtn_model, labels, anchors, args)
 
@@ -55,12 +58,12 @@ def test(run, test_num, test_set, rpn_model, dtn_model, labels, anchors, args):
         test_time = time.time() - start_time
 
         test_times.append(test_time)
-
-        run["outputs/dtn"].log(
-            neptune.types.File.as_image(
-                draw_dtn_output(image, final_bboxes, labels, final_labels, final_scores)
+        if step % 3 == 0:
+            run["outputs/dtn"].log(
+                neptune.types.File.as_image(
+                    draw_dtn_output(image, final_bboxes, labels, final_labels, final_scores)
+                )
             )
-        )
     mean_test_time = tf.reduce_mean(test_times)
 
     return mean_test_time
