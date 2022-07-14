@@ -14,3 +14,4 @@ __pycache__/
 .neptune/
 data_chkr/
 models/
+model_weights/
