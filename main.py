@@ -87,7 +87,8 @@ def train(
     for epoch in range(args.epochs):
         epoch_progress = tqdm(range(train_num//args.batch_size))
         for _ in epoch_progress:
-            image, gt_boxes, gt_labels = next(train_set)
+            try: image, gt_boxes, gt_labels = next(train_set)
+            except: continue
 
             true_rpn = build_rpn_target(anchors, gt_boxes, gt_labels, args)
             loss_rpn, rpn_reg_output, rpn_cls_output, feature_map = forward_backward_rpn(image, true_rpn, rpn_model, optimizer1, args.batch_size, args.feature_map_shape, args.anchor_ratios, args.anchor_scales, args.total_pos_bboxes, args.total_neg_bboxes)
@@ -130,7 +131,8 @@ def validation(valid_set, rpn_model, dtn_model, labels, anchors, args):
     aps = []
     validation_progress = tqdm(range(100))
     for _ in validation_progress:
-        image, gt_boxes, gt_labels = next(valid_set)
+        try: image, gt_boxes, gt_labels = next(valid_set)
+        except: continue
         rpn_reg_output, rpn_cls_output, feature_map = rpn_model(image)
         roi_bboxes, _ = RoIBBox(rpn_reg_output, rpn_cls_output, anchors, args)
         pooled_roi = RoIAlign(roi_bboxes, feature_map, args)
@@ -153,7 +155,8 @@ def test(run, test_num, test_set, rpn_model, dtn_model, labels, anchors, args):
     aps = []
     test_progress = tqdm(range(test_num))
     for step in test_progress:
-        image, gt_boxes, gt_labels = next(test_set)
+        try: image, gt_boxes, gt_labels = next(test_set)
+        except: continue
         start_time = time.time()
         rpn_reg_output, rpn_cls_output, feature_map = rpn_model(image)
         roi_bboxes, roi_scores = RoIBBox(rpn_reg_output, rpn_cls_output, anchors, args)
