@@ -1,39 +1,0 @@
-2022-07-14 18:23:06.298784: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
-2022-07-14 18:23:14.704453: I tensorflow/compiler/jit/xla_cpu_device.cc:41] Not creating XLA devices, tf_xla_enable_xla_devices not set
-2022-07-14 18:23:14.705930: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcuda.so.1
-2022-07-14 18:23:14.816126: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1720] Found device 0 with properties: 
-pciBusID: 0000:25:00.0 name: NVIDIA A100-SXM4-40GB computeCapability: 8.0
-coreClock: 1.41GHz coreCount: 108 deviceMemorySize: 39.59GiB deviceMemoryBandwidth: 1.41TiB/s
-2022-07-14 18:23:14.816160: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
-2022-07-14 18:23:14.821596: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
-2022-07-14 18:23:14.821651: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
-2022-07-14 18:23:14.823238: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcufft.so.10
-2022-07-14 18:23:14.824240: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcurand.so.10
-2022-07-14 18:23:14.825625: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusolver.so.10
-2022-07-14 18:23:14.826813: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusparse.so.11
-2022-07-14 18:23:14.827202: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudnn.so.8
-2022-07-14 18:23:14.830224: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1862] Adding visible gpu devices: 0
-2022-07-14 18:23:14.830730: I tensorflow/core/platform/cpu_feature_guard.cc:142] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX512F
-To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
-2022-07-14 18:23:14.830808: I tensorflow/compiler/jit/xla_gpu_device.cc:99] Not creating XLA devices, tf_xla_enable_xla_devices not set
-2022-07-14 18:23:14.832369: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1720] Found device 0 with properties: 
-pciBusID: 0000:25:00.0 name: NVIDIA A100-SXM4-40GB computeCapability: 8.0
-coreClock: 1.41GHz coreCount: 108 deviceMemorySize: 39.59GiB deviceMemoryBandwidth: 1.41TiB/s
-2022-07-14 18:23:14.832389: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
-2022-07-14 18:23:14.832409: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
-2022-07-14 18:23:14.832419: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
-2022-07-14 18:23:14.832429: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcufft.so.10
-2022-07-14 18:23:14.832439: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcurand.so.10
-2022-07-14 18:23:14.832448: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusolver.so.10
-2022-07-14 18:23:14.832457: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusparse.so.11
-2022-07-14 18:23:14.832466: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudnn.so.8
-2022-07-14 18:23:14.835407: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1862] Adding visible gpu devices: 0
-2022-07-14 18:23:14.835433: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
-2022-07-14 18:23:15.409726: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1261] Device interconnect StreamExecutor with strength 1 edge matrix:
-2022-07-14 18:23:15.409779: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1267]      0 
-2022-07-14 18:23:15.409787: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1280] 0:   N 
-2022-07-14 18:23:15.414485: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1406] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 37571 MB memory) -> physical GPU (device: 0, name: NVIDIA A100-SXM4-40GB, pci bus id: 0000:25:00.0, compute capability: 8.0)
-2022-07-14 18:23:15.498474: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:116] None of the MLIR optimization passes are enabled (registered 2)
-2022-07-14 18:23:15.498896: I tensorflow/core/platform/profile_utils/cpu_utils.cc:112] CPU Frequency: 3000000000 Hz
-  0%|          | 0/360 [00:00<?, ?it/s]  3%|▎         | 12/360 [00:00<00:02, 117.30it/s]  7%|▋         | 24/360 [00:00<00:02, 117.21it/s] 10%|█         | 37/360 [00:00<00:02, 118.34it/s] 14%|█▍        | 50/360 [00:00<00:02, 119.35it/s] 18%|█▊        | 63/360 [00:00<00:02, 120.06it/s] 21%|██▏       | 77/360 [00:00<00:02, 121.81it/s] 25%|██▌       | 90/360 [00:00<00:02, 121.78it/s] 29%|██▊       | 103/360 [00:00<00:02, 121.62it/s] 32%|███▏      | 116/360 [00:00<00:02, 121.61it/s] 36%|███▌      | 129/360 [00:01<00:01, 121.64it/s] 39%|███▉      | 142/360 [00:01<00:01, 121.57it/s] 43%|████▎     | 155/360 [00:01<00:01, 121.55it/s] 47%|████▋     | 168/360 [00:01<00:01, 121.49it/s] 50%|█████     | 181/360 [00:01<00:01, 121.48it/s] 54%|█████▍    | 194/360 [00:01<00:01, 121.50it/s] 58%|█████▊    | 208/360 [00:01<00:01, 122.81it/s] 61%|██████▏   | 221/360 [00:01<00:01, 122.28it/s] 65%|██████▌   | 234/360 [00:01<00:01, 121.94it/s] 69%|██████▊   | 247/360 [00:02<00:00, 121.72it/s] 72%|███████▏  | 260/360 [00:02<00:00, 121.49it/s] 76%|███████▌  | 273/360 [00:02<00:00, 121.52it/s] 79%|███████▉  | 286/360 [00:02<00:00, 121.38it/s] 83%|████████▎ | 299/360 [00:02<00:00, 121.18it/s] 87%|████████▋ | 312/360 [00:02<00:00, 114.54it/s] 91%|█████████ | 326/360 [00:02<00:00, 117.60it/s] 94%|█████████▍| 339/360 [00:02<00:00, 118.69it/s] 98%|█████████▊| 352/360 [00:02<00:00, 119.16it/s]100%|██████████| 360/360 [00:02<00:00, 121.18it/s]
-Waiting for the remaining 46 operations to synchronize with Neptune. Do not kill this process.
