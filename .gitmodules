@@ -1,0 +1,3 @@
+[submodule "models/Faster_R-CNN"]
+	path = models/Faster_R-CNN
+	url = https://github.com/wonhyung64/Faster_R-CNN
