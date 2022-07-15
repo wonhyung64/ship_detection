@@ -13,6 +13,5 @@ __pycache__/
 /saved_model
 .neptune/
 data_chkr/
-models/
 model_weights/
 tmp/
