@@ -66,10 +66,10 @@ def deserialize_sample(serialized_string):
 
 def load_ship_dataset(name, data_dir, img_size):
     train_set, valid_set, test_set, labels = fetch_dataset(img_size, data_dir)
-    train_num ,test_num = load_data_num(name, train_set, test_set)
+    train_num, valid_num ,test_num = load_data_num(name, train_set, valid_set, test_set)
     labels = preprocess_labels(labels)
 
-    return (train_set, valid_set, test_set), labels, train_num, test_num
+    return (train_set, valid_set, test_set), labels, train_num, valid_num, test_num
 
 
 def preprocess_labels(labels):
