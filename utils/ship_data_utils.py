@@ -6,9 +6,10 @@ from models.faster_rcnn.utils import (
 )
 from .aihub_utils import fetch_dataset
 
+
 def load_dataset(name, data_dir, img_size):
     train_set, valid_set, test_set, labels = fetch_dataset(img_size, data_dir)
-    train_num, valid_num ,test_num = load_data_num(name, train_set, valid_set, test_set)
+    train_num, valid_num, test_num = load_data_num(name, train_set, valid_set, test_set)
 
     return (train_set, valid_set, test_set), labels, train_num, valid_num, test_num
 
@@ -23,7 +24,6 @@ def normalize_image(image):
     return norm_img
 
 
-
 def build_dataset(datasets, batch_size):
     train_set, valid_set, test_set = datasets
 
@@ -35,7 +35,9 @@ def build_dataset(datasets, batch_size):
     )
 
     train_set = train_set.map(lambda x, y, z, w: preprocess(x, y, z, w, split="train"))
-    valid_set = valid_set.map(lambda x, y, z, w: preprocess(x, y, z, w, split="validation"))
+    valid_set = valid_set.map(
+        lambda x, y, z, w: preprocess(x, y, z, w, split="validation")
+    )
     test_set = test_set.map(lambda x, y, z, w: preprocess(x, y, z, w, split="test"))
 
     train_set = train_set.repeat().padded_batch(
@@ -60,7 +62,7 @@ def build_dataset(datasets, batch_size):
     train_set = train_set.prefetch(tf.data.experimental.AUTOTUNE)
     valid_set = valid_set.prefetch(tf.data.experimental.AUTOTUNE)
     test_set = test_set.prefetch(tf.data.experimental.AUTOTUNE)
-    
+
     train_set = iter(train_set)
     valid_set = iter(valid_set)
     test_set = iter(test_set)
@@ -73,4 +75,3 @@ def preprocess(image, gt_boxes, gt_labels, file_name, split):
         image, gt_boxes = rand_flip_horiz(image, gt_boxes)
 
     return image, gt_boxes, gt_labels
-

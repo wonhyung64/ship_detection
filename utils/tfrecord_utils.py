@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
+
 def serialize_example(dic):
     image = dic["image"].tobytes()
     image_shape = np.array(dic["image_shape"]).tobytes()
