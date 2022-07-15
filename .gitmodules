@@ -1,3 +1,0 @@
-[submodule "models/faster_rcnn"]
-	path = models/faster_rcnn
-	url = https://github.com/wonhyung64/faster_rcnn
