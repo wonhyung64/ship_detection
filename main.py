@@ -30,15 +30,6 @@ from utils import (
     build_dataset,
 )
 
-# datasets, labels, train_num, test_num = load_ship_dataset(name="ship", data_dir="D:/won/data", img_size=[500, 500])
-# train_set = iter(datasets[0])
-# i=1
-# while i <= 248:
-#     a = next(train_set)
-#     a
-#     print(i)
-#     i+= 1
-
 
 def main():
     args = build_args()
@@ -88,7 +79,9 @@ def train(
         epoch_progress = tqdm(range(train_num//args.batch_size))
         for _ in epoch_progress:
             try: image, gt_boxes, gt_labels = next(train_set)
-            except: continue
+            except: 
+                print("\nITERATOR ERROR OCCURED\n")
+                continue
 
             true_rpn = build_rpn_target(anchors, gt_boxes, gt_labels, args)
             loss_rpn, rpn_reg_output, rpn_cls_output, feature_map = forward_backward_rpn(image, true_rpn, rpn_model, optimizer1, args.batch_size, args.feature_map_shape, args.anchor_ratios, args.anchor_scales, args.total_pos_bboxes, args.total_neg_bboxes)
