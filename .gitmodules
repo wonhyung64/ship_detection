@@ -1,3 +1,6 @@
 [submodule "models/faster_rcnn"]
 	path = models/faster_rcnn
 	url = https://github.com/wonhyung64/faster_rcnn
+[submodule "models/yolo_v3"]
+	path = models/yolo_v3
+	url = https://github.com/wonhyung64/yolo_v3
