@@ -12,6 +12,4 @@ __pycache__/
 /frcnn_atmp
 /saved_model
 .neptune/
-data_chkr/
 model_weights/
-tmp/
