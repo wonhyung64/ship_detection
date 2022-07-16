@@ -3,7 +3,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --partition=hgx
 ##
-#SBATCH --job-name=frcnn_voc07
+#SBATCH --job-name=aihub
 #SBATCH -o SLURM.%N.%j.out
 #SBATCH -e SLURM.%N.%j.err
 ##
@@ -15,4 +15,4 @@ date
 module add CUDA/11.2.2
 module add ANACONDA/2020.11
 
-python /home1/wonhyung64/Github/ship_detection/test_smpl.py --data-dir /home1/wonhyung64/data --name ship
+python /home1/wonhyung64/Github/ship_detection/main.py --name aihub --data-dir /home1/wonhyung64/data
