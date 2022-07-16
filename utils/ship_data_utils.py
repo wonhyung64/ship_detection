@@ -14,7 +14,7 @@ def load_dataset(name, data_dir, img_size):
     if not (os.path.exists(save_dir)):
         fetch_dataset(name, img_size, save_dir, data_dir)
     train_set, valid_set, test_set, labels = load_fetched_dataset(save_dir)
-    train_num, valid_num, test_num = load_data_num(name, train_set, valid_set, test_set)
+    train_num, valid_num, test_num = load_data_num(name, data_dir, train_set, valid_set, test_set)
 
     return (train_set, valid_set, test_set), labels, train_num, valid_num, test_num
 
@@ -82,6 +82,7 @@ def load_fetched_dataset(save_dir):
 def read_labels(save_dir):
     with open(f"{save_dir}/labels.txt", "r") as f:
         labels = eval(f.readline())
+    labels = ["bg"] + labels
 
     return labels
 
