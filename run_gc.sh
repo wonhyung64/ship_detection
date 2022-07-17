@@ -15,4 +15,4 @@ date
 module add CUDA/11.2.2
 module add ANACONDA/2020.11
 
-python /home1/wonhyung64/Github/ship_detection/main.py --data-dir /home1/wonhyung64/data --name gc --anchor-scales 8. 16. 32. --pos-threshold 0.5
+python /home1/wonhyung64/Github/ship_detection/main.py --data-dir /home1/wonhyung64/data --name gc --anchor-scales 8. 16. 32. --pos-threshold 0.5 --total-pos-bboxes 16 --total-neg-bboxes 16
