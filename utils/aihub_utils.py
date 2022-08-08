@@ -22,6 +22,7 @@ def extract_sub_dir(data_dir):
 def write_datasets(
     train_dir_idx, valid_dir_idx, test_dir_idx, save_dir, data_sub_dirs, img_size
 ):
+    error_num = 0
     label_dict = {}
     for split_idx, split_name in (
         (train_dir_idx, "train"),
@@ -39,29 +40,34 @@ def write_datasets(
             filename_lst = sorted(
                 list(set([folder_conts[l][:25] for l in range(len(folder_conts))]))
             )
-            for j in range(len(filename_lst)):
-                if j % 3 == 0:
-                    sample_name = filename_lst[j]
-                    sample_name_ = re.sub(r"[^0-9]", "", sample_name)
-                    sample = f"{folder_dir}/{sample_name}"
+            try:
+                for j in range(len(filename_lst)):
+                    if j % 3 == 0:
+                        sample_name = filename_lst[j]
+                        sample_name_ = re.sub(r"[^0-9]", "", sample_name)
+                        sample = f"{folder_dir}/{sample_name}"
 
-                    image, org_img_size = extract_image(sample, img_size)
-                    bboxes, labels, label_dict = extract_annot(
-                        sample, label_dict, org_img_size
-                    )
+                        image, org_img_size = extract_image(sample, img_size)
+                        bboxes, labels, label_dict = extract_annot(
+                            sample, label_dict, org_img_size
+                        )
 
-                    dic = {
-                        "image": image,
-                        "image_shape": image.shape,
-                        "bbox": bboxes,
-                        "bbox_shape": bboxes.shape,
-                        "label": labels,
-                        "filename": np.array(
-                            [int(element) for element in list(sample_name_)]
-                        ),
-                    }
+                        dic = {
+                            "image": image,
+                            "image_shape": image.shape,
+                            "bbox": bboxes,
+                            "bbox_shape": bboxes.shape,
+                            "label": labels,
+                            "filename": np.array(
+                                [int(element) for element in list(sample_name_)]
+                            ),
+                        }
 
-                    writer.write(serialize_example(dic))
+                        writer.write(serialize_example(dic))
+            except:
+                error_num += 1
+                print(f"\n {error_num} Error Occured\n")
+                continue
 
     write_labels(save_dir, label_dict)
 
