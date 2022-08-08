@@ -69,7 +69,7 @@ def write_datasets(
 def extract_image(sample, img_size):
     image = Image.open(f"{sample}.jpg")
     image = tf.convert_to_tensor(np.array(image, dtype=np.int32))
-    org_img_size = tf.shpae(image).numpy()
+    org_img_size = tf.shape(image).numpy()
     image = tf.image.resize(image, img_size)
     if tf.reduce_max(image).numpy() >= 1:
         image /= 255
