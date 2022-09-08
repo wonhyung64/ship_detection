@@ -19,7 +19,7 @@ def build_dataset(args):
         padding_values=padding_values,
         drop_remainder=True
     )
-    valid_set = valid_set.repeat().batch(1)
+    valid_set = valid_set.repeat(100).batch(1)
     test_set = test_set.repeat().batch(1)
 
     train_set = train_set.prefetch(tf.data.experimental.AUTOTUNE)
