@@ -83,7 +83,7 @@ def preprocess(dataset, split, img_size):
     image = resize(image, img_size)
     if split == "train":
         image, gt_boxes = rand_flip_horiz(image, gt_boxes)
-    gt_labels = tf.ones_like(gt_boxes[...,0], dtype=tf.int32)
+    gt_labels = tf.zeros_like(gt_boxes[...,0], dtype=tf.int32)
 
     return image, gt_boxes, gt_labels
 
