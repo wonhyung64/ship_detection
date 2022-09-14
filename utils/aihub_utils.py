@@ -1,3 +1,4 @@
+#%%
 import re
 import os
 import json
@@ -8,13 +9,25 @@ from PIL import Image
 from tqdm import tqdm
 from .tfrecord_utils import serialize_example
 
+#%%
 
 def extract_sub_dir(data_dir):
     data_main_dir = f"{data_dir}/ship_detection/train/남해_여수항1구역_BOX"
     data_mid_dirs = [f"{data_main_dir}/{cont}" for cont in os.listdir(data_main_dir)]
+    data_mid_dirs_ = []
+    for d in data_mid_dirs:
+        if ".DS_Store" in d: continue
+        data_mid_dirs_.append(d)
+    data_mid_dirs = data_mid_dirs_
+
     data_sub_dirs = []
     for data_mid_dir in data_mid_dirs:
         data_sub_dirs += [f"{data_mid_dir}/{cont}" for cont in os.listdir(data_mid_dir)]
+    data_sub_dirs_ = []
+    for d in data_sub_dirs:
+        if ".DS_Store" in d: continue
+        data_sub_dirs_.append(d)
+    data_sub_dirs = data_sub_dirs_
 
     return data_sub_dirs
 
@@ -38,16 +51,21 @@ def write_datasets(
             folder_dir = data_sub_dirs[split_idx[i]]
             folder_conts = os.listdir(folder_dir)
             filename_lst = sorted(
-                list(set([folder_conts[l][:25] for l in range(len(folder_conts))]))
+                list(set([folder_conts[l].split(".")[0] for l in range(len(folder_conts))]))
             )
             try:
                 for j in range(len(filename_lst)):
-                    if j % 3 == 0:
+                    if j % 7 == 0:
                         sample_name = filename_lst[j]
+                        sample_name = re.sub(r"_meta", "", sample_name)
                         sample_name_ = re.sub(r"[^0-9]", "", sample_name)
                         sample = f"{folder_dir}/{sample_name}"
+                        folder_dir2 = folder_dir.split("/")
+                        folder_dir2[6] += "2"
+                        folder_dir2 = "/".join(folder_dir2)
+                        sample2 = f"{folder_dir2}/{sample_name}"
 
-                        image, org_img_size = extract_image(sample, img_size)
+                        image, org_img_size = extract_image(sample2, img_size)
                         bboxes, labels, label_dict = extract_annot(
                             sample, label_dict, org_img_size
                         )
@@ -115,3 +133,5 @@ def extract_annot(sample, label_dict, org_img_size):
 def write_labels(save_dir, label_dict):
     with open(f"{save_dir}/labels.txt", "w") as f:
         f.write(json.dumps(label_dict, ensure_ascii=False))
+
+# %%

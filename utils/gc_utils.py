@@ -96,6 +96,8 @@ def extract_annot(sample_name, label_dict, org_img_size):
                     label_dict[0] = "선박"
     bboxes = np.array(bboxes_, dtype=np.float32)
     labels = np.array(labels_, dtype=np.int32)
+    bboxes = bboxes[labels == 2]
+    labels = labels[labels == 2] - 2
 
     return bboxes, labels, label_dict
 
