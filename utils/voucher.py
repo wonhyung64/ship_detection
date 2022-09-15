@@ -9,10 +9,10 @@ def build_dataset(args):
     valid_set = valid_set.map(lambda x: preprocess(x, split="valid", img_size=args.img_size))
     test_set = test_set.map(lambda x: preprocess(x, split="test", img_size=args.img_size))
 
-    # data_shapes = ([None, None, None], [None, None], [None], [])
-    # padding_values=(0., 0., -1, "")
-    data_shapes = ([None, None, None], [None, None], [None])
-    padding_values=(0., 0., -1)
+    data_shapes = ([None, None, None], [None, None], [None], [])
+    padding_values=(0., 0., -1, "")
+    # data_shapes = ([None, None, None], [None, None], [None])
+    # padding_values=(0., 0., -1)
     train_set = train_set.repeat().padded_batch(
         args.batch_size,
         padded_shapes=data_shapes,
@@ -78,6 +78,7 @@ def load_fetched_dataset(save_dir):
 
     return train, validation, test
 
+
 def preprocess(dataset, split, img_size):
     image, gt_boxes, filename = export_data(dataset)
     image = resize(image, img_size)
@@ -85,7 +86,8 @@ def preprocess(dataset, split, img_size):
         image, gt_boxes = rand_flip_horiz(image, gt_boxes)
     gt_labels = tf.ones_like(gt_boxes[...,0], dtype=tf.int32)
 
-    return image, gt_boxes, gt_labels
+
+    return image, gt_boxes, gt_labels, filename
 
 
 def export_data(sample):
