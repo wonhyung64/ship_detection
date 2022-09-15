@@ -1,7 +1,9 @@
 #%%
+import json
+import time
+from datetime import datetime
 import tensorflow as tf
 import os
-import neptune.new as neptune
 from models.faster_rcnn.utils import (
     build_models,
     build_anchors,
@@ -15,59 +17,105 @@ from models.faster_rcnn.utils import (
     calculate_ap_const,
 )
 from tqdm import tqdm
-from utils.voucher import build_dataset
+from utils.voucher import build_dataset, decode_filename
+from model import ShipDetector, Evaluate
+import pandas as pd
 
-def extract(image, gt_boxes, gt_labels, filename): 
-    return image, gt_boxes, gt_labels
 
 #%%
 if __name__ == "__main__":
     args = build_args()
-    run = neptune.init(
-        project=NEPTUNE_PROJECT,
-        api_token=NEPTUNE_API_KEY,
-        run="MOD-174"
-    )
     args.data_dir = "/Users/wonhyung64/data/aihub_512_512"
+    args.name = "aihub"
     args.batch_size = 1
+    args.anchor_scales = [64., 128., 256.]
 
     train_set, valid_set, test_set = build_dataset(args)
-    train_num , valid_num, test_num = 8000, 100, 1000
-    labels = ["bg", "ship"]
 
-    experiment_name = run.get_run_url().split("/")[-1].replace("-", "_")
-    model_name = NEPTUNE_PROJECT.split("-")[1]
-    experiment_dir = f"./model_weights/{model_name}"
-    os.makedirs(experiment_dir, exist_ok=True)
-    weights_dir = f"{experiment_dir}/{experiment_name}"
+    weights_dir = "/Users/wonhyung64/data/voucher/model"
+    detector = ShipDetector(weights_dir)
+    evaluate = Evaluate()
+    save_dir = "/Users/wonhyung64/data/voucher"
 
-    run["rpn_model"].download(f"{weights_dir}_rpn.h5")
-    run["dtn_model"].download(f"{weights_dir}_dtn.h5")
+    org_file = {}
+    for num, dataset in [(950, valid_set), (950, test_set), (8000, train_set)]:
+        progress = tqdm(range(num))
+        for step in progress:
+            image, gt_boxes, gt_labels, orgname = next(dataset)
+            orgname = decode_filename(orgname)[0]
+            idx = ((gt_boxes[...,2] - gt_boxes[...,0]) * 500) * ((gt_boxes[...,3] - gt_boxes[...,1]) * 500)  > 2500
+            gt_boxes = tf.expand_dims(gt_boxes[idx], axis=0)
+            gt_labels = tf.expand_dims(gt_labels[idx], axis=0)
 
-    rpn_model, dtn_model = build_models(args, len(labels))
-    rpn_model.load_weights(f"{weights_dir}_rpn.h5")
-    dtn_model.load_weights(f"{weights_dir}_dtn.h5")
-    anchors = build_anchors(args)
+            final_bboxes, final_labels, final_scores = detector.predict(image)
+            ap_50 = evaluate.cal_ap(final_bboxes, final_labels, gt_boxes, gt_labels + 1)
+            progress.set_description(f"ap50: {float(ap_50)}")
+            res = evaluate.visualize(image, final_bboxes, final_labels, final_scores)
+            if float(ap_50) > 0 and float(ap_50) < 1:
+                current_time = datetime.now().strftime("%y%m%d%H%M%S")
+                org_file[str(current_time)] = orgname
+                filename = f"{current_time}_1"
 
-    test_progress = tqdm(range(30))
-    colors = tf.random.uniform((len(labels), 4), maxval=256, dtype=tf.int32)
-    for step in test_progress:
-        for _ in range(30):
-            next(valid_set)
-        image, gt_boxes, gt_labels = next(valid_set)
-        rpn_reg_output, rpn_cls_output, feature_map = rpn_model(image)
-        roi_bboxes, roi_scores = RoIBBox(rpn_reg_output, rpn_cls_output, anchors, args)
-        pooled_roi = RoIAlign(roi_bboxes, feature_map, args)
-        dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
-        final_bboxes, final_labels, final_scores = Decode(
-            dtn_reg_output, dtn_cls_output, roi_bboxes, args, len(labels)
-        )
+                img = tf.keras.utils.array_to_img(tf.squeeze(image, 0))
 
-        result = draw_dtn_output(
-            image, final_bboxes, labels, final_labels, final_scores, colors
-        )
-        ap50 = calculate_ap_const(final_bboxes, final_labels, gt_boxes, gt_labels, len(labels))
-        print(ap50)
-        result
-        result.save(f"res_{step}.jpg")
-# %%
+                ants = tf.cast(tf.squeeze(gt_boxes, 0) * 500, dtype=tf.int32)
+                annotation = {}
+                annotation["time"] = current_time
+                for num, ant in enumerate(ants):
+                    ant_dict = {
+                    "bnd_xmin": str(ant[1].numpy()),
+                    "bnd_ymin": str(ant[0].numpy()),
+                    "bnd_xmax": str(ant[3].numpy()),
+                    "bnd_ymax": str(ant[2].numpy()),
+                    }
+                    annotation[f"name{num+1}"] = ant_dict
+
+                annotation_csv = pd.DataFrame()
+                for i in annotation.keys():
+                    if i == "time": continue
+                    df = pd.DataFrame.from_dict([annotation[i]])
+                    df[i[:4]] = i[4:]
+                    annotation_csv = pd.concat([annotation_csv, df], axis=0)
+                annotation_csv["time"] = annotation["time"]
+                annotation_csv = annotation_csv[["time", "name", "bnd_xmin", "bnd_ymin", "bnd_xmax", "bnd_ymax"]]
+
+                preds = tf.cast(final_bboxes[final_labels != 0.] * 500, dtype=tf.int32)
+                prediction = {}
+                prediction["time"] = current_time
+                for num, pred in enumerate(preds):
+                    pred_dict = {
+                    "bnd_xmin": str(pred[1].numpy()),
+                    "bnd_ymin": str(pred[0].numpy()),
+                    "bnd_xmax": str(pred[3].numpy()),
+                    "bnd_ymax": str(pred[2].numpy()),
+                    }
+                    prediction[f"name{num+1}"] = pred_dict
+
+                prediction_csv = pd.DataFrame()
+                for i in prediction.keys():
+                    if i == "time": continue
+                    df = pd.DataFrame.from_dict([prediction[i]])
+                    df[i[:4]] = i[4:]
+                    prediction_csv = pd.concat([prediction_csv, df], axis=0)
+                prediction_csv["time"] = prediction["time"]
+                prediction_csv = prediction_csv[["time", "name", "bnd_xmin", "bnd_ymin", "bnd_xmax", "bnd_ymax"]]
+
+                img.save(f"{save_dir}/train/{filename}_trn_img.jpg")
+                with open(f"{save_dir}/train/{filename}_trn_ant.json", "w") as f:
+                    json.dump(annotation, f)
+                annotation_csv.to_csv(f"{save_dir}/train/{filename}_trn_ant.csv", index=False)
+                with open(f"{save_dir}/train/{filename}_trn_pred.json", "w") as f:
+                    json.dump(prediction, f)
+                prediction_csv.to_csv(f"{save_dir}/train/{filename}_trn_pred.csv", index=False)
+                res.save(f"{save_dir}/train/{filename}_trn_res.jpg")
+
+                img.save(f"{save_dir}/test/{filename}_test_img.jpg")
+                with open(f"{save_dir}/test/{filename}_test_ant.json", "w") as f:
+                    json.dump(annotation, f)
+                annotation_csv.to_csv(f"{save_dir}/test/{filename}_test_ant.csv", index=False)
+                with open(f"{save_dir}/test/{filename}_test_pred.json", "w") as f:
+                    json.dump(prediction, f)
+                prediction_csv.to_csv(f"{save_dir}/test/{filename}_test_pred.csv", index=False)
+                res.save(f"{save_dir}/test/{filename}_test_res.jpg")
+    with open(f"{save_dir}/org_file.json", "w", encoding="utf-8") as f:
+        json.dump(org_file, f, ensure_ascii=False)
