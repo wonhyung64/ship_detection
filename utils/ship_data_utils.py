@@ -81,7 +81,7 @@ def load_fetched_dataset(save_dir):
 
 
 def read_labels(save_dir):
-    with open(f"{save_dir}/labels.txt", "r", encoding="cp949") as f:
+    with open(f"{save_dir}/labels.txt", "r", encoding="utf-8") as f:
         labels = eval(f.readline())
 
     return labels
