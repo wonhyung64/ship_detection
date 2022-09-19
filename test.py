@@ -3,6 +3,8 @@ import json
 import time
 from datetime import datetime
 import tensorflow as tf
+from PIL import Image
+from tqdm import tqdm
 import os
 from models.faster_rcnn.utils import (
     build_models,
@@ -20,6 +22,8 @@ from tqdm import tqdm
 from utils.voucher import build_dataset, decode_filename
 from model import ShipDetector, Evaluate
 import pandas as pd
+import xml.etree.ElementTree as elemTree
+import numpy as np
 
 
 def annot2dict(current_time, annots):
@@ -49,6 +53,34 @@ def dict2csv(annotation):
 
     return annotation_csv
 
+
+def extract_annot(data_dir, sample, org_img_size):
+    tree = elemTree.parse(f"{data_dir}/raw/{sample}.xml")
+    root = tree.getroot()
+    bboxes_ = []
+    labels_ = []
+    for x in root:
+        if x.tag == "object":
+            for y in x:
+                if y.tag == "bndbox":
+                    bbox_ = [int(z.text) for z in y]
+                    bbox = [
+                        bbox_[1] / org_img_size[0],
+                        bbox_[0] / org_img_size[1],
+                        bbox_[3] / org_img_size[0],
+                        bbox_[2] / org_img_size[1],
+                    ]
+                    bboxes_.append(bbox)
+                if y.tag == "category_id":
+                    label = int(y.text)
+                    labels_.append(label)
+    bboxes = np.array(bboxes_, dtype=np.float32)
+    labels = np.array(labels_, dtype=np.int32)
+    gt_boxes = tf.expand_dims(tf.convert_to_tensor(bboxes), axis=0)
+    gt_labels = tf.expand_dims(tf.convert_to_tensor(labels), axis=0)
+
+    return gt_boxes, gt_labels
+
 #%%
 if __name__ == "__main__":
     args = build_args()
@@ -64,7 +96,6 @@ if __name__ == "__main__":
     evaluate = Evaluate()
     save_dir = "/Users/wonhyung64/data/voucher"
 
-'''
     org_file = {}
     for num, dataset in [(950, valid_set), (950, test_set), (8000, train_set)]:
         progress = tqdm(range(num))
@@ -113,24 +144,65 @@ if __name__ == "__main__":
                 res.save(f"{save_dir}/test/{filename}_test_res.jpg")
 
     with open(f"{save_dir}/org_file.json", "w", encoding="utf-8") as f:
-        json.dump(org_file, f, ensure_ascii=False집
+        json.dump(org_file, f, ensure_ascii=False)
 
-'''
 #%%
-from PIL import Image
-from tqdm import tqdm
-data_dir = "/Users/wonhyung64/Downloads/220916_학습 및 검증용 이미지(원본) 데이터 수집"
-save_dir = "/Users/wonhyung64/data/voucher/sample_220916"
+data_dir = "/Users/wonhyung64/data/voucher/sample_220919"
+save_dir = "/Users/wonhyung64/data/voucher/result_220919"
 for split in ["검증용", "학습용"]:
     os.makedirs(f"{save_dir}/{split}", exist_ok=True)
     path = f"{data_dir}/{split}"
-    samples = iter(os.listdir(path))
+    filenames = os.listdir(path)
+    samples = set([filename.split(".")[0] for filename in filenames if filename != ".DS_Store"])
+    if split == "검증용": sep = "test"
+    else: sep = "trn"
     progress = tqdm(samples)
     progress.set_description(split)
     for sample in progress:
-        image = Image.open(f"{path}/{sample}")
-        image = tf.expand_dims(tf.image.resize(image, [500, 500]) / 255., axis=0)
-        final_bboxes, final_labels, final_scores = detector.predict(image)
-        res = evaluate.visualize(image, final_bboxes, final_labels, final_scores)
-        res.save(f"{save_dir}/{split}/{sample}")
+        try:
+            current_time = datetime.now().strftime("%y%m%d%H%M%S")
+
+            image = Image.open(f"{data_dir}/raw/{sample}.jpg")
+            image = tf.convert_to_tensor(image)
+            org_img_size = tf.shape(image)[:2]
+            image = tf.expand_dims(tf.image.resize(image, [500, 500]) / 255., axis=0)
+
+            gt_boxes, gt_labels = extract_annot(data_dir, sample, org_img_size)
+            idx = ((gt_boxes[...,2] - gt_boxes[...,0]) * 500) * ((gt_boxes[...,3] - gt_boxes[...,1]) * 500)  > 2500
+            gt_boxes = tf.expand_dims(gt_boxes[idx], axis=0)
+
+
+            filename = f"{current_time}_1"
+
+            img = tf.keras.utils.array_to_img(tf.squeeze(image, 0))
+
+            ants = tf.cast(tf.squeeze(gt_boxes, 0) * 500, dtype=tf.int32)
+            annotation = annot2dict(current_time, ants)
+            annotation_csv = dict2csv(annotation)
+
+            path = f"{save_dir}/{split}/{filename}"
+
+            img.save(f"{path}_{sep}_img.jpg")
+            with open(f"{path}_{sep}_ant.json", "w") as f:
+                json.dump(annotation, f)
+            annotation_csv.to_csv(f"{path}_{sep}_ant.csv", index=False)
+
+            if split == "검증용":
+                final_bboxes, final_labels, final_scores = detector.predict(image)
+                res = evaluate.visualize(image, final_bboxes, final_labels, final_scores)
+
+                preds = tf.cast(final_bboxes[final_labels != 0.] * 500, dtype=tf.int32)
+                prediction = annot2dict(current_time, preds)
+                prediction_csv = dict2csv(prediction)
+                with open(f"{path}_trn_pred.json", "w") as f:
+                    json.dump(prediction, f)
+                prediction_csv.to_csv(f"{path}_{sep}_pred.csv", index=False)
+                res.save(f"{path}_sep_res.jpg")
+        except:
+            print("error occured")
+            continue
+# %%
+
+
+
 # %%
