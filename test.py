@@ -22,6 +22,33 @@ from model import ShipDetector, Evaluate
 import pandas as pd
 
 
+def annot2dict(current_time, annots):
+    annotation = {}
+    annotation["time"] = current_time
+    for num, annot in enumerate(annots):
+        annot_dict = {
+        "bnd_xmin": str(annot[1].numpy()),
+        "bnd_ymin": str(annot[0].numpy()),
+        "bnd_xmax": str(annot[3].numpy()),
+        "bnd_ymax": str(annot[2].numpy()),
+        }
+        annotation[f"name{num+1}"] = annot_dict
+
+    return annotation
+
+
+def dict2csv(annotation):
+    annotation_csv = pd.DataFrame()
+    for i in annotation.keys():
+        if i == "time": continue
+        df = pd.DataFrame.from_dict([annotation[i]])
+        df[i[:4]] = i[4:]
+        annotation_csv = pd.concat([annotation_csv, df], axis=0)
+    annotation_csv["time"] = annotation["time"]
+    annotation_csv = annotation_csv[["time", "name", "bnd_xmin", "bnd_ymin", "bnd_xmax", "bnd_ymax"]]
+
+    return annotation_csv
+
 #%%
 if __name__ == "__main__":
     args = build_args()
@@ -37,6 +64,7 @@ if __name__ == "__main__":
     evaluate = Evaluate()
     save_dir = "/Users/wonhyung64/data/voucher"
 
+'''
     org_file = {}
     for num, dataset in [(950, valid_set), (950, test_set), (8000, train_set)]:
         progress = tqdm(range(num))
@@ -59,46 +87,12 @@ if __name__ == "__main__":
                 img = tf.keras.utils.array_to_img(tf.squeeze(image, 0))
 
                 ants = tf.cast(tf.squeeze(gt_boxes, 0) * 500, dtype=tf.int32)
-                annotation = {}
-                annotation["time"] = current_time
-                for num, ant in enumerate(ants):
-                    ant_dict = {
-                    "bnd_xmin": str(ant[1].numpy()),
-                    "bnd_ymin": str(ant[0].numpy()),
-                    "bnd_xmax": str(ant[3].numpy()),
-                    "bnd_ymax": str(ant[2].numpy()),
-                    }
-                    annotation[f"name{num+1}"] = ant_dict
-
-                annotation_csv = pd.DataFrame()
-                for i in annotation.keys():
-                    if i == "time": continue
-                    df = pd.DataFrame.from_dict([annotation[i]])
-                    df[i[:4]] = i[4:]
-                    annotation_csv = pd.concat([annotation_csv, df], axis=0)
-                annotation_csv["time"] = annotation["time"]
-                annotation_csv = annotation_csv[["time", "name", "bnd_xmin", "bnd_ymin", "bnd_xmax", "bnd_ymax"]]
+                annotation = annot2dict(current_time, ants)
+                annotation_csv = dict2csv(annotation)
 
                 preds = tf.cast(final_bboxes[final_labels != 0.] * 500, dtype=tf.int32)
-                prediction = {}
-                prediction["time"] = current_time
-                for num, pred in enumerate(preds):
-                    pred_dict = {
-                    "bnd_xmin": str(pred[1].numpy()),
-                    "bnd_ymin": str(pred[0].numpy()),
-                    "bnd_xmax": str(pred[3].numpy()),
-                    "bnd_ymax": str(pred[2].numpy()),
-                    }
-                    prediction[f"name{num+1}"] = pred_dict
-
-                prediction_csv = pd.DataFrame()
-                for i in prediction.keys():
-                    if i == "time": continue
-                    df = pd.DataFrame.from_dict([prediction[i]])
-                    df[i[:4]] = i[4:]
-                    prediction_csv = pd.concat([prediction_csv, df], axis=0)
-                prediction_csv["time"] = prediction["time"]
-                prediction_csv = prediction_csv[["time", "name", "bnd_xmin", "bnd_ymin", "bnd_xmax", "bnd_ymax"]]
+                prediction = annot2dict(current_time, preds)
+                prediction_csv = dict2csv(prediction)
 
                 img.save(f"{save_dir}/train/{filename}_trn_img.jpg")
                 with open(f"{save_dir}/train/{filename}_trn_ant.json", "w") as f:
@@ -117,5 +111,26 @@ if __name__ == "__main__":
                     json.dump(prediction, f)
                 prediction_csv.to_csv(f"{save_dir}/test/{filename}_test_pred.csv", index=False)
                 res.save(f"{save_dir}/test/{filename}_test_res.jpg")
+
     with open(f"{save_dir}/org_file.json", "w", encoding="utf-8") as f:
-        json.dump(org_file, f, ensure_ascii=False)
+        json.dump(org_file, f, ensure_ascii=False집
+
+'''
+#%%
+from PIL import Image
+from tqdm import tqdm
+data_dir = "/Users/wonhyung64/Downloads/220916_학습 및 검증용 이미지(원본) 데이터 수집"
+save_dir = "/Users/wonhyung64/data/voucher/sample_220916"
+for split in ["검증용", "학습용"]:
+    os.makedirs(f"{save_dir}/{split}", exist_ok=True)
+    path = f"{data_dir}/{split}"
+    samples = iter(os.listdir(path))
+    progress = tqdm(samples)
+    progress.set_description(split)
+    for sample in progress:
+        image = Image.open(f"{path}/{sample}")
+        image = tf.expand_dims(tf.image.resize(image, [500, 500]) / 255., axis=0)
+        final_bboxes, final_labels, final_scores = detector.predict(image)
+        res = evaluate.visualize(image, final_bboxes, final_labels, final_scores)
+        res.save(f"{save_dir}/{split}/{sample}")
+# %%
