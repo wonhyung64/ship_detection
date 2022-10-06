@@ -2,6 +2,7 @@
 import re
 import os
 import xml
+import pickle
 from tqdm import tqdm
 
 file_dir_list = []
@@ -20,3 +21,13 @@ for region in tqdm(region_list):
             for file in file_list:
                 file = re.sub(".xml", "", file)
                 file_dir_list.append(f"{path}/{region}/{date}/{folder}/{file}")
+
+#%%
+
+filePath = f'{path}/files.pickle'
+with open(filePath, 'wb') as lf:
+    pickle.dump(file_dir_list, lf)
+
+
+with open(filePath, 'rb') as lf:
+    readList = pickle.load(lf)
