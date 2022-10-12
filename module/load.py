@@ -1,7 +1,7 @@
 import os
 import tensorflow as tf
-from .utils import load_pickle
-from .preprocess import fetch_dataset, deserialize_example
+from .datasets.utils import load_pickle
+from .datasets.preprocess import fetch_dataset, deserialize_example
 
 def load_dataset(split="all", data_dir="/Volumes/LaCie/data/해상 객체 이미지"):
     datasets = []
