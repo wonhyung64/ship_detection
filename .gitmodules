@@ -4,3 +4,6 @@
 [submodule "models/yolo_v3"]
 	path = models/yolo_v3
 	url = https://github.com/wonhyung64/yolo_v3
+[submodule "models/retinanet"]
+	path = models/retinanet
+	url = https://github.com/wonhyung64/retinanet.git
