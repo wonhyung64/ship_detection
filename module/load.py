@@ -3,7 +3,9 @@ import tensorflow as tf
 from .datasets.utils import load_pickle
 from .datasets.preprocess import fetch_dataset, deserialize_example
 
-def load_dataset(split="all", data_dir="/Volumes/LaCie/data/해상 객체 이미지"):
+
+def load_dataset(data_dir, split="all"):
+    data_dir = f"{data_dir}/ship"
     datasets = []
     if split == "all":
         split_list = ["train", "valid", "test"]
@@ -23,4 +25,3 @@ def load_dataset(split="all", data_dir="/Volumes/LaCie/data/해상 ᄀ�
     labels, _ = load_pickle(f"{data_dir}/labels.pickle")
     
     return datasets, labels
-
