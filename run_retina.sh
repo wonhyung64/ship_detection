@@ -3,7 +3,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --partition=hgx
 ##
-#SBATCH --job-name=aihub
+#SBATCH --job-name=ship_retina
 #SBATCH -o SLURM.%N.%j.out
 #SBATCH -e SLURM.%N.%j.err
 ##

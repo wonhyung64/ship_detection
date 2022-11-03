@@ -46,7 +46,7 @@ def retina_eval(img, gt_boxes, gt_labels, filename, fusion_scale):
     return img, gt_boxes, gt_labels, input_image, ratio
 
 
-def build_dataset(datasets, batch_size):
+def build_dataset(datasets, batch_size, fusion_scale=-1):
     autotune = tf.data.AUTOTUNE
     label_encoder = LabelEncoder()
     (train_set, valid_set, test_set) = datasets
@@ -55,7 +55,7 @@ def build_dataset(datasets, batch_size):
         lambda x, y, z, w:
             tf.py_function(
                 retina_train,
-                [x, y, z, w, -1.],
+                [x, y, z, w, fusion_scale],
                 [tf.float32, tf.float32, tf.int32]
                 )
             )
@@ -64,7 +64,7 @@ def build_dataset(datasets, batch_size):
         lambda x, y, z, w:
             tf.py_function(
                 retina_eval,
-                [x, y, z, w, -1.],
+                [x, y, z, w, fusion_scale],
                 [tf.float32, tf.float32, tf.int32, tf.float32, tf.float32]
                 )
             )
@@ -73,7 +73,7 @@ def build_dataset(datasets, batch_size):
         lambda x, y, z, w:
             tf.py_function(
                 retina_eval,
-                [x, y, z, w, -1.],
+                [x, y, z, w, fusion_scale],
                 [tf.float32, tf.float32, tf.int32, tf.float32, tf.float32]
                 )
             )
@@ -83,7 +83,7 @@ def build_dataset(datasets, batch_size):
     )
     train_set = train_set.map(
         label_encoder.encode_batch, num_parallel_calls=autotune
-    ).shuffle(6050)
+    ).shuffle(6033)
 
     train_set = train_set.repeat()
     valid_set = valid_set.repeat()
