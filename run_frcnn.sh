@@ -15,4 +15,4 @@ date
 module add CUDA/11.2.2
 module add ANACONDA/2020.11
 
-python /home1/wonhyung64/Github/ship_detection/run.py --name ship --data-dir /home1/wonhyung64/data/ship --anchor-scales 32. 64. 128.
+python /home1/wonhyung64/Github/ship_detection/run.py --name ship --data-dir /home1/wonhyung64/data --anchor-scales 32. 64. 128.
