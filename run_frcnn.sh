@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --partition=hgx
+#SBATCH --partition=gpu1
 ##
 #SBATCH --job-name=ship_frcnn
 #SBATCH -o SLURM.%N.%j.out
 #SBATCH -e SLURM.%N.%j.err
 ##
-#SBATCH --gres=gpu:hgx:1
+#SBATCH --gres=gpu:rtx3090:1
 
 hostname
 date
