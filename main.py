@@ -112,4 +112,4 @@ for split, dataset_num, dataset in [("valid", valid_num, valid_set), ("test", te
                 filename = f'{labels[gt_label.numpy()].replace(" ", "_")}_{datetime.now().strftime("%H%M%S%f")}'
                 np.save(f"{file_dir}/{split}/{filename}.npy", [cropped_img, gt_label], allow_pickle=True)
 
-#%%
+#%% other label classification w resnet50
