@@ -16,6 +16,9 @@ from retina_utils import build_dataset
 from PIL import ImageDraw
 import matplotlib.pyplot as plt
 from datetime import datetime
+from tensorflow.keras.applications.resnet import ResNet50
+from tensorflow.keras.layers import GlobalAveragePooling2D, Dense
+from tensorflow.keras.models import Model
 
 def feat2gray(feature_map):
     feature = tf.squeeze(feature_map, 0)
@@ -31,6 +34,9 @@ def crop_img(image, gt_box):
     
     return cropped_img
 
+
+file_dir = "/Volumes/LaCie/data/ship"
+'''
 #%%
 run = neptune.init(
 project=NEPTUNE_PROJECT,
@@ -96,8 +102,6 @@ fig.tight_layout()
 fig.savefig("./result/result.png")
 
 #%%
-file_dir = "/Volumes/LaCie/data/ship"
-
 for split, dataset_num, dataset in [("valid", valid_num, valid_set), ("test", test_num, test_set)]:
     os.makedirs(f"{file_dir}/{split}", exist_ok=True)
     for num in tqdm(range(dataset_num)):
@@ -111,5 +115,64 @@ for split, dataset_num, dataset in [("valid", valid_num, valid_set), ("test", te
 
                 filename = f'{labels[gt_label.numpy()].replace(" ", "_")}_{datetime.now().strftime("%H%M%S%f")}'
                 np.save(f"{file_dir}/{split}/{filename}.npy", [cropped_img, gt_label], allow_pickle=True)
-
+'''
 #%% other label classification w resnet50
+class CustomResNet50(Model):
+    def __init__(self, **kwargs):
+        super(CustomResNet50, self).__init__(**kwargs)
+        self.backbone = ResNet50(include_top=False, input_shape=[None, None, 3])
+        self.backbone.trainable = False
+        self.pooling = GlobalAveragePooling2D()
+        self.dense = Dense(5, activation="softmax")
+
+    @tf.function 
+    def call(self, image):
+        feature_map = self.backbone(image)
+        x = self.pooling(feature_map)
+        x = self.dense(x)
+
+        return x
+        
+
+
+classifier = CustomResNet50()
+classifier.build(input_shape = [None, None, None, 3])
+optimizer = tf.keras.optimizers.SGD(learning_rate=0.001)
+
+train_dir = f"{file_dir}/valid"
+test_dir = f"{file_dir}/test"
+
+for epoch in range(50):
+    train_progress = tqdm(os.listdir(train_dir))
+    for file in train_progress:
+        if not file.__contains__(".npy"):
+            continue
+        sample = f"{train_dir}/{file}"
+        image, label = list(np.load(sample, allow_pickle=True))
+        input_image = tf.expand_dims(image, 0)
+        true = tf.expand_dims(tf.one_hot(label, 5), 0)
+    
+        with tf.GradientTape(persistent=True) as tape:
+            pred = classifier(input_image)
+            loss = tf.keras.losses.CategoricalCrossentropy()(true, pred)
+        grads = tape.gradient(loss, classifier.trainable_weights)
+        optimizer.apply_gradients(zip(grads, classifier.trainable_weights))
+
+        train_progress.set_description(f"{epoch}/50 Epoch: loss - {loss.numpy()}")
+    
+    metrics = []
+    for file in tqdm(os.listdir(test_dir)):
+        if not file.__contains__(".npy"):
+            continue
+        sample = f"{test_dir}/{file}"
+        image, label = list(np.load(sample, allow_pickle=True))
+        input_image = tf.expand_dims(image, 0)
+        with tf.device('/device:GPU:0'):
+            pred = classifier.predict(input_image)
+        onehot_pred = tf.one_hot(tf.argmax(pred, axis=-1), 5)
+        metric = tf.keras.metrics.Accuracy()(true, onehot_pred)
+        metrics.append(metric)
+
+    accuarcy = tf.reduce_mean([metrics])
+    print(f"{epoch}: {accuracy}")
+    classifier.save_weights("./model_weights/classifier.h5")
