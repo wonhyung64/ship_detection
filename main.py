@@ -1,5 +1,5 @@
 #%%
-import os, time, sys
+import os, time, sys, argparse
 import numpy as np
 import tensorflow as tf
 import neptune.new as neptune
@@ -34,10 +34,17 @@ def crop_img(image, gt_box):
     
     return cropped_img
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--file-dir", type=str, default="/Volumes/LaCie/data/ship")
 
-file_dir = "/Volumes/LaCie/data/ship"
-'''
+try:
+    args = parser.parse_args()
+except:
+    args = parser.parse_args([])
+
+file_dir = args.file_dir
 #%%
+'''
 run = neptune.init(
 project=NEPTUNE_PROJECT,
 api_token=NEPTUNE_API_KEY,
@@ -132,7 +139,6 @@ class CustomResNet50(Model):
         x = self.dense(x)
 
         return x
-        
 
 
 classifier = CustomResNet50()
@@ -141,6 +147,7 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=0.001)
 
 train_dir = f"{file_dir}/valid"
 test_dir = f"{file_dir}/test"
+image, label = list(np.load(f"{train_dir}/{os.listdir(train_dir)[367]}", allow_pickle=True))
 
 for epoch in range(50):
     train_progress = tqdm(os.listdir(train_dir))
@@ -173,6 +180,6 @@ for epoch in range(50):
         metric = tf.keras.metrics.Accuracy()(true, onehot_pred)
         metrics.append(metric)
 
-    accuarcy = tf.reduce_mean([metrics])
+    accuracy = tf.reduce_mean([metrics])
     print(f"{epoch}: {accuracy}")
-    classifier.save_weights("./model_weights/classifier.h5")
+    classifier.save_weights(f".{file_dir}/classifier.h5")
