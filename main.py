@@ -1,24 +1,27 @@
 #%%
 import os, time, sys, argparse
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 import neptune.new as neptune
-from tqdm import tqdm
-from models.retinanet.module.model import RetinaNet, DecodePredictions, get_backbone
-from models.retinanet.module.variable import NEPTUNE_API_KEY, NEPTUNE_PROJECT
-from module.load import load_dataset
-from models.retinanet.module.ap import calculate_ap_const
-from models.retinanet.module.draw import draw_output
-
-from models.retinanet.module.dataset import load_data_num
-from models.retinanet.module.model import build_model
-from retina_utils import build_dataset
-from PIL import ImageDraw
 import matplotlib.pyplot as plt
+from tqdm import tqdm
+from PIL import ImageDraw, Image
 from datetime import datetime
 from tensorflow.keras.applications.resnet import ResNet50
 from tensorflow.keras.layers import GlobalAveragePooling2D, Dense
 from tensorflow.keras.models import Model
+
+from retina_utils import build_dataset
+from module.load import load_dataset
+from module.datasets.eda import k_means, draw_hws
+from models.retinanet.module.model import RetinaNet, DecodePredictions, get_backbone
+from models.retinanet.module.variable import NEPTUNE_API_KEY, NEPTUNE_PROJECT
+from models.retinanet.module.ap import calculate_ap_const
+from models.retinanet.module.draw import draw_output
+from models.retinanet.module.dataset import load_data_num
+from models.retinanet.module.model import build_model
+
 
 def feat2gray(feature_map):
     feature = tf.squeeze(feature_map, 0)
@@ -42,7 +45,9 @@ try:
 except:
     args = parser.parse_args([])
 
-file_dir = args.file_dir
+# file_dir = args.file_dir
+file_dir = "/media/optim1/Data/won/ship"
+
 #%%
 '''
 run = neptune.init(
@@ -143,13 +148,14 @@ class CustomResNet50(Model):
 
 classifier = CustomResNet50()
 classifier.build(input_shape = [None, None, None, 3])
-optimizer = tf.keras.optimizers.SGD(learning_rate=0.001)
+optimizer = tf.keras.optimizers.SGD(learning_rate=0.0001)
 
 train_dir = f"{file_dir}/valid"
 test_dir = f"{file_dir}/test"
 image, label = list(np.load(f"{train_dir}/{os.listdir(train_dir)[367]}", allow_pickle=True))
 
-for epoch in range(50):
+#%%
+for epoch in range(1):
     train_progress = tqdm(os.listdir(train_dir))
     for file in train_progress:
         if not file.__contains__(".npy"):
@@ -168,7 +174,7 @@ for epoch in range(50):
         train_progress.set_description(f"{epoch}/50 Epoch: loss - {loss.numpy()}")
     
     metrics = []
-    for file in tqdm(os.listdir(test_dir)):
+    for file in os.listdir(test_dir):
         if not file.__contains__(".npy"):
             continue
         sample = f"{test_dir}/{file}"
@@ -182,4 +188,50 @@ for epoch in range(50):
 
     accuracy = tf.reduce_mean([metrics])
     print(f"{epoch}: {accuracy}")
-    classifier.save_weights(f".{file_dir}/classifier.h5")
+    classifier.save_weights(f"{file_dir}/classifier.h5")
+
+classifier.load_weights(f"{file_dir}/classifier.h5")
+test_set = iter(os.listdir(test_dir))
+
+error_pred = []
+error_true = []
+error_image = []
+correct_pred = []
+correct_true = []
+correct_image = []
+
+while True: 
+    image, label = list(np.load(f"{test_dir}/{next(test_set)}", allow_pickle=True))
+    pred = tf.argmax(classifier(tf.expand_dims(image, 0))[0], -1).numpy()
+    true = label.numpy()
+    if pred != true:
+        error_pred.append(pred)
+        error_true.append(true)
+        error_image.append(image)
+    else:
+        correct_pred.append(pred)
+        correct_true.append(true)
+        correct_image.append(image)
+        
+pd.Series(error_true).value_counts()
+pd.Series(correct_true).value_counts()
+
+imgs = []
+for img in error_image:
+    imgs.append(tf.shape(img)[:2].numpy())
+
+hws = k_means(imgs, 9)
+fig2 = draw_hws(hws)
+fig1 = draw_hws(hws)
+
+fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(20, 10))
+axes[0].imshow(fig1)
+axes[0].set_title("Correct Prediction Boxes", fontsize=20)
+# axes[0].set_axis_off()
+axes[1].imshow(fig2)
+axes[1].set_title("Wrong Prediction Boxes", fontsize=20)
+# axes[1].set_axis_off()
+fig.tight_layout()
+
+#%%
+
