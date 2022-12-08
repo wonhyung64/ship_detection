@@ -45,8 +45,8 @@ try:
 except:
     args = parser.parse_args([])
 
-# file_dir = args.file_dir
-file_dir = "/media/optim1/Data/won/ship"
+file_dir = args.file_dir
+# file_dir = "/media/optim1/Data/won/ship"
 
 #%%
 '''
@@ -67,7 +67,7 @@ datasets, labels = load_dataset(data_dir="/Volumes/LaCie/data")
 train_num, valid_num, test_num = load_data_num(
     "ship", "/Volumes/LaCie/data", datasets[0], datasets[1], datasets[2]
     )
-train_set, valid_set, test_set = build_dataset(datasets, 2, -1.)
+train_set, valid_set, test_set = build_dataset(datasets, 1, -1.)
 # while True:
 #     image, gt_boxes, gt_labels, input_image, ratio = next(test_set)
 #     if any(gt_labels != 1): break
@@ -114,11 +114,12 @@ fig.tight_layout()
 fig.savefig("./result/result.png")
 
 #%%
+dataset = iter(datasets[0])
 for split, dataset_num, dataset in [("valid", valid_num, valid_set), ("test", test_num, test_set)]:
     os.makedirs(f"{file_dir}/{split}", exist_ok=True)
     for num in tqdm(range(dataset_num)):
-        image, gt_boxes, gt_labels, input_image, ratio = next(dataset)
-        idxs = gt_labels != 1
+        image, gt_boxes, gt_labels, filename = next(dataset)
+        idxs = gt_labels == 5
         for idx, boolean in enumerate(idxs):
             if boolean.numpy():
                 gt_box = gt_boxes[idx]

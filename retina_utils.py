@@ -83,7 +83,7 @@ def build_dataset(datasets, batch_size, fusion_scale=-1):
     )
     train_set = train_set.map(
         label_encoder.encode_batch, num_parallel_calls=autotune
-    ).shuffle(6033)
+    )#.shuffle(6033)
 
     train_set = train_set.repeat()
     valid_set = valid_set.repeat()
