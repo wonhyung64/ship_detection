@@ -215,7 +215,7 @@ while True:
         
 pd.Series(error_true).value_counts()
 pd.Series(correct_true).value_counts()
-
+classifier.get_layer("resnet50").output
 imgs = []
 for img in error_image:
     imgs.append(tf.shape(img)[:2].numpy())
@@ -233,5 +233,11 @@ axes[1].set_title("Wrong Prediction Boxes", fontsize=20)
 # axes[1].set_axis_off()
 fig.tight_layout()
 
-#%%
-
+#%% 부표 feature_map 확인
+image, label = list(np.load(f"{test_dir}/{next(test_set)}", allow_pickle=True))
+samples = iter([sample for sample in  os.listdir(test_dir) if sample.__contains__("buoy") and not sample.__contains__("fishing")])
+image, label = list(np.load(f"{test_dir}/{next(samples)}", allow_pickle=True))
+feat_extractor = get_backbone() 
+c3, c4, c5 = feat_extractor(tf.expand_dims(image, 0))
+plt.imshow(feat2gray(c3))
+tf.reduce_sum(c3)
