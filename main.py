@@ -75,44 +75,104 @@ decoder = DecodePredictions(confidence_threshold=0.5)
 
 #%%
 from models.retinanet.module.ap import calculate_pr, calculate_ap_per_class
+from retina_utils import retina_eval
+
+train_set = datasets[0]
+autotune = tf.data.AUTOTUNE
+train_set = train_set.map(
+    lambda x, y, z, w:
+        tf.py_function(
+            retina_eval,
+            [x, y, z, w, -1.],
+            [tf.float32, tf.float32, tf.int32, tf.float32, tf.float32]
+            )
+        ).repeat()
+train_set = train_set.apply(tf.data.experimental.ignore_errors())
+train_set = train_set.prefetch(autotune)
+train_set = iter(train_set)
+
 total_labels = len(labels)
 mAP_threshold = 0.5
-AP = {}
-# [749, 1333]
-box_scale = 96.
+AP = {
+    "verytiny": {},
+    "tiny": {},
+    "small": {},
+    "medium": {},
+    "large": {},
+    }
 
-def check_cond(scaled_bboxes, gt_boxes, box_scale1, box_scale2=None):
-    pred_boxes = scaled_bboxes * tf.tile([749., 1333.], [2]) 
-    true_boxes = gt_boxes * tf.tile([749., 1333.], [2])
-
-    pred_idx = tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) < box_scale**2
-    true_idx = tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < box_scale**2
-
-scaled_bboxes[pred_idx]
-
-for _ in tqdm(range(test_num)):
-    image, gt_boxes, gt_labels, input_image, ratio = next(test_set)
+# 1801
+for _ in tqdm(range(1801)):
+    image, gt_boxes, gt_labels, input_image, ratio = next(train_set)
+    gt_labels
+    
+    
     predictions = model(input_image, training=False)
     scaled_bboxes, final_bboxes, final_scores, final_labels = decoder(input_image, predictions, ratio, tf.shape(image)[:2])
 
-    for c in range(total_labels):
-        if tf.math.reduce_any(final_labels == c) or tf.math.reduce_any(gt_labels == c):
-            final_bbox = tf.expand_dims(scaled_bboxes[final_labels == c], axis=0)
-            gt_box = tf.expand_dims(gt_boxes[gt_labels == c], axis=0)
+    pred_boxes = scaled_bboxes * tf.tile([749., 1333.], [2]) 
+    true_boxes = gt_boxes * tf.tile([749., 1333.], [2])
 
-            if final_bbox.shape[1] == 0 or gt_box.shape[1] == 0:
-                ap = tf.constant(0.0)
-            else:
-                precision, recall = calculate_pr(final_bbox, gt_box, mAP_threshold)
-                ap = calculate_ap_per_class(recall, precision)
+    pred_verytiny = tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) < 8.**2
+    true_verytiny = tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < 8.**2
 
-            try:
-                AP[c].append(ap.numpy())
-            except:
-                AP[c] = [ap.numpy()]
+    pred_tiny = tf.logical_and(tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) >= 8.**2, tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) < 16.**2)
+    true_tiny = tf.logical_and(tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) >= 8.**2, tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < 16.**2)
 
-for k, v in AP.items():
+    pred_small = tf.logical_and(tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) >= 16.**2, tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) < 32.**2)
+    true_small = tf.logical_and(tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) >= 16.**2, tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < 32.**2)
+
+    pred_medium = tf.logical_and(tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) >= 32.**2, tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) < 96.**2)
+    true_medium = tf.logical_and(tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) >= 32.**2, tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < 96.**2)
+
+    pred_large = tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) >= 96.**2
+    true_large = tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) >= 96.**2
+
+    for pred_idx, true_idx, key in [
+        (pred_verytiny, true_verytiny, "verytiny"),
+        (pred_tiny, true_tiny, "tiny"),
+        (pred_small, true_small, "small"),
+        (pred_medium, true_medium, "medium"),
+        (pred_large, true_large, "large"),
+        ]:
+
+        selected_gt_boxes = gt_boxes[true_idx]
+        selected_gt_labels = gt_labels[true_idx]
+        selected_pred_boxes = scaled_bboxes[pred_idx]
+        selected_pred_labels = final_labels[pred_idx]
+
+        for c in range(total_labels):
+            if tf.math.reduce_any(selected_pred_labels == c) or tf.math.reduce_any(selected_gt_labels == c):
+                final_bbox = tf.expand_dims(selected_pred_boxes[selected_pred_labels == c], axis=0)
+                gt_box = tf.expand_dims(selected_gt_boxes[selected_gt_labels == c], axis=0)
+
+                if final_bbox.shape[1] == 0 or gt_box.shape[1] == 0:
+                    ap = tf.constant(0.0)
+                else:
+                    precision, recall = calculate_pr(final_bbox, gt_box, mAP_threshold)
+                    ap = calculate_ap_per_class(recall, precision)
+
+                try:
+                    AP[key][c].append(ap.numpy())
+                except:
+                    AP[key][c] = [ap.numpy()]
+
+for k, v in AP["large"].items():
     print(f"{k}: {tf.reduce_mean(v)}")
+
+rows = []
+for size, dicts in AP.items():
+    for label, aps in dicts.items():
+        for ap in aps:
+            rows.append([size, label, ap])
+
+train_df = pd.DataFrame(
+    data=rows,
+    columns=["object_size", "label", "ap_50"],
+)
+train_df = train_df.sort_values(["object_size", "label"]).reset_index(drop=True)
+train_df.to_csv("./result/train_pred_result.csv", index=False)
+train_df[(train_df["object_size"] == "medium") & (train_df["label"] == 1)].describe()
 
 
 #%%
@@ -284,3 +344,40 @@ feat_extractor = get_backbone()
 c3, c4, c5 = feat_extractor(tf.expand_dims(image, 0))
 plt.imshow(feat2gray(c3))
 tf.reduce_sum(c3)
+'''
+#%%
+indices = [0, 1, 2, 3, 4, 5]
+columns = ["verytiny", "tiny", "small", "medium", "large"]
+
+train_count = pd.DataFrame(index=indices, columns=columns)
+train_sum = pd.DataFrame(index=indices, columns=columns)
+train_mean = pd.DataFrame(index=indices, columns=columns)
+train_std = pd.DataFrame(index=indices, columns=columns)
+
+for i in train_df["label"].unique().tolist():
+    for c in train_df["object_size"].unique().tolist():
+        train_count.loc[i,c] = train_df[(train_df["label"] == i) & (train_df["object_size"] == c)]["ap_50"].count()
+        train_sum.loc[i,c] = train_df[(train_df["label"] == i) & (train_df["object_size"] == c)]["ap_50"].sum()
+        train_mean.loc[i,c] = train_df[(train_df["label"] == i) & (train_df["object_size"] == c)]["ap_50"].mean()
+        train_std.loc[i,c] = train_df[(train_df["label"] == i) & (train_df["object_size"] == c)]["ap_50"].std()
+        
+test_count = pd.DataFrame(index=indices, columns=columns)
+test_sum = pd.DataFrame(index=indices, columns=columns)
+test_mean = pd.DataFrame(index=indices, columns=columns)
+test_std = pd.DataFrame(index=indices, columns=columns)
+
+for i in test_df["label"].unique().tolist():
+    for c in test_df["object_size"].unique().tolist():
+        test_count.loc[i,c] = test_df[(test_df["label"] == i) & (test_df["object_size"] == c)]["ap_50"].count()
+        test_sum.loc[i,c] = test_df[(test_df["label"] == i) & (test_df["object_size"] == c)]["ap_50"].sum()
+        test_mean.loc[i,c] = test_df[(test_df["label"] == i) & (test_df["object_size"] == c)]["ap_50"].mean()
+        test_std.loc[i,c] = test_df[(test_df["label"] == i) & (test_df["object_size"] == c)]["ap_50"].std()
+        
+train_count
+train_mean
+
+ship_ap = AP["verytiny"][1] + AP["tiny"][1] + AP["small"][1] + AP["medium"][1] + AP["large"][1]
+import seaborn as sns
+fig, ax = plt.subplots(figsize=(10, 10))
+sns.histplot(ship_ap, ax=ax)
+fig.savefig("./result/ship_ap_hist.png")
