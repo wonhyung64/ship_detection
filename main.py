@@ -49,7 +49,6 @@ file_dir = args.file_dir
 # file_dir = "/media/optim1/Data/won/ship"
 
 #%%
-'''
 run = neptune.init(
 project=NEPTUNE_PROJECT,
 api_token=NEPTUNE_API_KEY,
@@ -58,24 +57,67 @@ run="MOD2-158"
 )
 run["model"].download("./model_weights/retinanet/MOD2-158.h5")
 run.stop()
-colors = tf.random.uniform((len(labels), 4), maxval=256, dtype=tf.int32)
-model = build_model(len(labels))
-model.load_weights("./model_weights/retinanet/MOD2-158.h5")
-decoder = DecodePredictions(confidence_threshold=0.5)
 
 datasets, labels = load_dataset(data_dir="/Volumes/LaCie/data")
 train_num, valid_num, test_num = load_data_num(
     "ship", "/Volumes/LaCie/data", datasets[0], datasets[1], datasets[2]
     )
 train_set, valid_set, test_set = build_dataset(datasets, 1, -1.)
+
+colors = tf.random.uniform((len(labels), 4), maxval=256, dtype=tf.int32)
+model = build_model(len(labels))
+model.load_weights("./model_weights/retinanet/MOD2-158.h5")
+decoder = DecodePredictions(confidence_threshold=0.5)
+
 # while True:
 #     image, gt_boxes, gt_labels, input_image, ratio = next(test_set)
 #     if any(gt_labels != 1): break
 
 #%%
-image, gt_boxes, gt_labels, input_image, ratio = next(test_set)
-predictions = model(input_image, training=False)
-scaled_bboxes, final_bboxes, final_scores, final_labels = decoder(input_image, predictions, ratio, tf.shape(image)[:2])
+from models.retinanet.module.ap import calculate_pr, calculate_ap_per_class
+total_labels = len(labels)
+mAP_threshold = 0.5
+AP = {}
+# [749, 1333]
+box_scale = 96.
+
+def check_cond(scaled_bboxes, gt_boxes, box_scale1, box_scale2=None):
+    pred_boxes = scaled_bboxes * tf.tile([749., 1333.], [2]) 
+    true_boxes = gt_boxes * tf.tile([749., 1333.], [2])
+
+    pred_idx = tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) < box_scale**2
+    true_idx = tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < box_scale**2
+
+scaled_bboxes[pred_idx]
+
+for _ in tqdm(range(test_num)):
+    image, gt_boxes, gt_labels, input_image, ratio = next(test_set)
+    predictions = model(input_image, training=False)
+    scaled_bboxes, final_bboxes, final_scores, final_labels = decoder(input_image, predictions, ratio, tf.shape(image)[:2])
+
+    for c in range(total_labels):
+        if tf.math.reduce_any(final_labels == c) or tf.math.reduce_any(gt_labels == c):
+            final_bbox = tf.expand_dims(scaled_bboxes[final_labels == c], axis=0)
+            gt_box = tf.expand_dims(gt_boxes[gt_labels == c], axis=0)
+
+            if final_bbox.shape[1] == 0 or gt_box.shape[1] == 0:
+                ap = tf.constant(0.0)
+            else:
+                precision, recall = calculate_pr(final_bbox, gt_box, mAP_threshold)
+                ap = calculate_ap_per_class(recall, precision)
+
+            try:
+                AP[c].append(ap.numpy())
+            except:
+                AP[c] = [ap.numpy()]
+
+for k, v in AP.items():
+    print(f"{k}: {tf.reduce_mean(v)}")
+
+
+#%%
+
+
 ap = calculate_ap_const(scaled_bboxes, final_labels, gt_boxes, gt_labels, len(labels))
 fig_pred = draw_output(image, final_bboxes, final_labels, final_scores, labels, colors)
 fig_true = draw_gt(image, gt_boxes, gt_labels, labels, colors)
