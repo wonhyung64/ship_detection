@@ -102,6 +102,7 @@ AP = {
     }
 from models.retinanet.module.anchor import AnchorBox
 # 1801
+i = 0
 for _ in tqdm(range(train_num)):
     image, gt_boxes, gt_labels, input_image, ratio = next(train_set)
     # if not all(gt_labels == 1):
