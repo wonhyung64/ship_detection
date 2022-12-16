@@ -410,3 +410,80 @@ fig = draw_hws(tf.constant([
     [539, 959]
 ], dtype=tf.float32))
 fig.save("./result/box_criterion.png")
+
+#%% count target num 
+from retina_utils import retina_eval
+from models.retinanet.module.bbox import swap_xy, convert_to_xywh
+from models.retinanet.module.target import LabelEncoder
+
+datasets, labels = load_dataset(data_dir="/Volumes/LaCie/data")
+train_num, valid_num, test_num = load_data_num(
+    "ship", "/Volumes/LaCie/data", datasets[0], datasets[1], datasets[2]
+    )
+
+train_set = datasets[0]
+autotune = tf.data.AUTOTUNE
+train_set = train_set.map(
+    lambda x, y, z, w:
+        tf.py_function(
+            retina_eval,
+            [x, y, z, w, -1.],
+            [tf.float32, tf.float32, tf.int32, tf.float32, tf.float32]
+            )
+        ).repeat()
+train_set = train_set.apply(tf.data.experimental.ignore_errors())
+train_set = train_set.prefetch(autotune)
+train_set = iter(train_set)
+
+pos_num_list = []
+for _ in tqdm(range(train_num)):
+    image, gt_boxes, gt_labels, input_image, ratio = next(train_set)
+
+    true_boxes = gt_boxes * tf.tile([749., 1333.], [2])
+
+    true_verytiny = tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < 8.**2
+    true_tiny = tf.logical_and(tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) >= 8.**2, tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < 16.**2)
+    true_small = tf.logical_and(tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) >= 16.**2, tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < 32.**2)
+    true_medium = tf.logical_and(tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) >= 32.**2, tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < 96.**2)
+    true_large = tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) >= 96.**2
+
+    for true_idx, key in [
+        (true_verytiny, "verytiny"),
+        (true_tiny, "tiny"),
+        (true_small, "small"),
+        (true_medium, "medium"),
+        (true_large, "large"),
+        ]:
+
+        if not any(true_idx):
+            continue
+
+        selected_gt_boxes = gt_boxes[true_idx]
+        selected_gt_labels = gt_labels[true_idx]
+        image_shape = [512, 512]
+        image_shape = tf.cast(image_shape, dtype=tf.float32)
+        selected_gt_boxes = swap_xy(selected_gt_boxes)
+        selected_gt_boxes = tf.stack(
+            [
+                selected_gt_boxes[:, 0] * image_shape[1],
+                selected_gt_boxes[:, 1] * image_shape[0],
+                selected_gt_boxes[:, 2] * image_shape[1],
+                selected_gt_boxes[:, 3] * image_shape[0],
+            ],
+            axis=-1,
+        )
+        selected_gt_boxes = convert_to_xywh(selected_gt_boxes)
+        image, (true_bbox, true_label) = LabelEncoder().encode_batch(tf.expand_dims(image, 0), tf.expand_dims(selected_gt_boxes, 0), tf.expand_dims(selected_gt_labels, 0))
+        
+        pos_num_dict = {
+            "sample_num": _,
+            "object_size": key,
+        }
+        for c in range(len(labels)):
+            pos_num_dict[f"class_{c}"] = tf.reduce_sum(tf.cast(true_label == c, dtype=tf.int32)).numpy()
+        pos_num_list.append(pos_num_dict)
+
+pos_num_df = pd.DataFrame(pos_num_list)
+# pos_num_df.to_csv("./result/pos_num.csv", index=False)
+
+# %%
