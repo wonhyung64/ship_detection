@@ -49,6 +49,7 @@ file_dir = args.file_dir
 # file_dir = "/media/optim1/Data/won/ship"
 
 #%%
+'''
 run = neptune.init(
 project=NEPTUNE_PROJECT,
 api_token=NEPTUNE_API_KEY,
@@ -242,7 +243,7 @@ for split, dataset_num, dataset in [("valid", valid_num, valid_set), ("test", te
 
                 filename = f'{labels[gt_label.numpy()].replace(" ", "_")}_{datetime.now().strftime("%H%M%S%f")}'
                 np.save(f"{file_dir}/{split}/{filename}.npy", [cropped_img, gt_label], allow_pickle=True)
-'''
+
 #%% other label classification w resnet50
 class CustomResNet50(Model):
     def __init__(self, **kwargs):
@@ -356,7 +357,6 @@ feat_extractor = get_backbone()
 c3, c4, c5 = feat_extractor(tf.expand_dims(image, 0))
 plt.imshow(feat2gray(c3))
 tf.reduce_sum(c3)
-'''
 #%%
 indices = [0, 1, 2, 3, 4, 5]
 columns = ["verytiny", "tiny", "small", "medium", "large"]
@@ -410,6 +410,7 @@ fig = draw_hws(tf.constant([
     [539, 959]
 ], dtype=tf.float32))
 fig.save("./result/box_criterion.png")
+'''
 
 #%% count target num 
 from retina_utils import retina_eval
@@ -485,11 +486,13 @@ for _ in tqdm(range(train_num)):
 
 pos_num_df = pd.DataFrame(pos_num_list)
 # pos_num_df.to_csv("./result/pos_num.csv", index=False)
-total = 0
-for i in range(6):
-    print(f'Class {i}: {pos_num_df[pos_num_df["object_size"] == "verytiny"][f"class_{i}"].sum()}')
-    total += pos_num_df[pos_num_df["object_size"] == "verytiny"][f"class_{i}"].sum()
-print(f'total: {total}')
+#%%
+for object_size in ["verytiny", "tiny", "small", "medium", "large"]:
+    total = 0
+    print(object_size)
+    for i in range(6):
+        print(f'Class {i}: {pos_num_df[pos_num_df["object_size"] == object_size][f"class_{i}"].sum()}')
+        total += pos_num_df[pos_num_df["object_size"] == object_size][f"class_{i}"].sum()
+    print(f'total: {total}')
     
-pos_num_df["object_size"].unique()
 # %%
