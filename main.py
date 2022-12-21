@@ -485,12 +485,11 @@ for _ in tqdm(range(train_num)):
 
 pos_num_df = pd.DataFrame(pos_num_list)
 # pos_num_df.to_csv("./result/pos_num.csv", index=False)
-
-pos_num_df[pos_num_df["object_size"] == "large"].class_0.sum()
-pos_num_df[pos_num_df["object_size"] == "large"].class_1.sum()
-pos_num_df[pos_num_df["object_size"] == "large"].class_2.sum()
-pos_num_df[pos_num_df["object_size"] == "large"].class_3.sum()
-pos_num_df[pos_num_df["object_size"] == "large"].class_4.sum()
-pos_num_df[pos_num_df["object_size"] == "large"].class_5.sum()
+total = 0
+for i in range(6):
+    print(f'Class {i}: {pos_num_df[pos_num_df["object_size"] == "verytiny"][f"class_{i}"].sum()}')
+    total += pos_num_df[pos_num_df["object_size"] == "verytiny"][f"class_{i}"].sum()
+print(f'total: {total}')
+    
 pos_num_df["object_size"].unique()
 # %%
