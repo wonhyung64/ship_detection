@@ -495,4 +495,4 @@ for object_size in ["verytiny", "tiny", "small", "medium", "large"]:
         total += pos_num_df[pos_num_df["object_size"] == object_size][f"class_{i}"].sum()
     print(f'total: {total}')
     
-# %%
+# %% box clustering with k=5
