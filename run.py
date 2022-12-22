@@ -50,7 +50,7 @@ def fit_retina():
     train_num, valid_num, test_num = load_data_num(
         args.name, args.data_dir, datasets[0], datasets[1], datasets[2]
         )
-    train_set, valid_set, test_set = build_dataset(datasets, args.batch_size, 50.)
+    train_set, valid_set, test_set = build_dataset(datasets, args.batch_size, -1.)
     colors = tf.random.uniform((len(labels), 4), maxval=256, dtype=tf.int32)
 
     model = build_model(len(labels))

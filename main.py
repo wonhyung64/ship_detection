@@ -49,14 +49,13 @@ file_dir = args.file_dir
 # file_dir = "/media/optim1/Data/won/ship"
 
 #%%
-'''
 run = neptune.init(
 project=NEPTUNE_PROJECT,
 api_token=NEPTUNE_API_KEY,
 mode="async",
-run="MOD2-158"
+run="MOD2-171"
 )
-run["model"].download("./model_weights/retinanet/MOD2-158.h5")
+run["model"].download("./model_weights/retinanet/MOD2-171.h5")
 run.stop()
 
 datasets, labels = load_dataset(data_dir="/Volumes/LaCie/data")
@@ -67,7 +66,7 @@ train_set, valid_set, test_set = build_dataset(datasets, 1, -1.)
 
 colors = tf.random.uniform((len(labels), 4), maxval=256, dtype=tf.int32)
 model = build_model(len(labels))
-model.load_weights("./model_weights/retinanet/MOD2-158.h5")
+model.load_weights("./model_weights/retinanet/MOD2-171.h5")
 decoder = DecodePredictions(confidence_threshold=0.00)
 
 # while True:
@@ -102,26 +101,11 @@ AP = {
     "large": {},
     }
 from models.retinanet.module.anchor import AnchorBox
-# 1801
-i = 0
+
 for _ in tqdm(range(train_num)):
     image, gt_boxes, gt_labels, input_image, ratio = next(train_set)
-    # if not all(gt_labels == 1):
-    #     break
-   
     predictions = model(input_image, training=False)
     scaled_bboxes, final_bboxes, final_scores, final_labels = decoder(input_image, predictions, ratio, tf.shape(image)[:2])
-    fig1 = draw_gt(image, gt_boxes, gt_labels, labels, colors)
-    fig2 = draw_output(image, final_bboxes[:10], final_labels[:10], final_scores[:10], labels, colors)
-    f, axes = plt.subplots(nrows=1, ncols=2, figsize=(20, 10), dpi=300)
-    axes[0].imshow(fig1)
-    axes[0].set_axis_off()
-    axes[1].imshow(fig2)
-    axes[1].set_axis_off()
-    f.tight_layout()
-    
-    f.savefig(f"./result/low_conf_pred{i}.png")
-    i+=1
 
     pred_boxes = scaled_bboxes * tf.tile([749., 1333.], [2]) 
     true_boxes = gt_boxes * tf.tile([749., 1333.], [2])
@@ -410,7 +394,6 @@ fig = draw_hws(tf.constant([
     [539, 959]
 ], dtype=tf.float32))
 fig.save("./result/box_criterion.png")
-'''
 
 #%% count target num 
 from retina_utils import retina_eval
