@@ -45,8 +45,8 @@ try:
 except:
     args = parser.parse_args([])
 
-file_dir = args.file_dir
-# file_dir = "/media/optim1/Data/won/ship"
+# file_dir = args.file_dir
+file_dir = "/media/optim1/Data/won/ship"
 
 #%%
 run = neptune.init(
@@ -55,13 +55,19 @@ api_token=NEPTUNE_API_KEY,
 mode="async",
 run="MOD2-171"
 )
+
 run["model"].download("./model_weights/retinanet/MOD2-171.h5")
 run.stop()
 
-datasets, labels = load_dataset(data_dir="/Volumes/LaCie/data")
+# datasets, labels = load_dataset(data_dir="/Volumes/LaCie/data")
+# train_num, valid_num, test_num = load_data_num(
+#     "ship", "/Volumes/LaCie/data", datasets[0], datasets[1], datasets[2]
+#     )
+datasets, labels = load_dataset(data_dir="/media/optim1/Data/won")
 train_num, valid_num, test_num = load_data_num(
-    "ship", "/Volumes/LaCie/data", datasets[0], datasets[1], datasets[2]
+    "ship", "/media/optim1/Data/won", datasets[0], datasets[1], datasets[2]
     )
+
 train_set, valid_set, test_set = build_dataset(datasets, 1, -1.)
 
 colors = tf.random.uniform((len(labels), 4), maxval=256, dtype=tf.int32)
@@ -101,7 +107,7 @@ AP = {
     "large": {},
     }
 from models.retinanet.module.anchor import AnchorBox
-
+train_num=6033
 for _ in tqdm(range(train_num)):
     image, gt_boxes, gt_labels, input_image, ratio = next(train_set)
     predictions = model(input_image, training=False)
@@ -139,7 +145,8 @@ for _ in tqdm(range(train_num)):
         selected_pred_labels = final_labels[pred_idx]
 
         for c in range(total_labels):
-            if tf.math.reduce_any(selected_pred_labels == c) or tf.math.reduce_any(selected_gt_labels == c):
+            # if tf.math.reduce_any(selected_pred_labels == c) or tf.math.reduce_any(selected_gt_labels == c):
+            if tf.math.reduce_any(selected_gt_labels == c):
                 final_bbox = tf.expand_dims(selected_pred_boxes[selected_pred_labels == c], axis=0)
                 gt_box = tf.expand_dims(selected_gt_boxes[selected_gt_labels == c], axis=0)
 
@@ -169,7 +176,8 @@ train_df = pd.DataFrame(
 )
 train_df = train_df.sort_values(["object_size", "label"]).reset_index(drop=True)
 
-train_df.to_csv("./result/train_pred_result.csv", index=False)
+train_df.to_csv("./result/train_pred_result_4.csv", index=False)
+
 
 
 #%%
