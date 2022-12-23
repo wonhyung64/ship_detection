@@ -53,10 +53,10 @@ run = neptune.init(
 project=NEPTUNE_PROJECT,
 api_token=NEPTUNE_API_KEY,
 mode="async",
-run="MOD2-171"
+run="MOD2-170"
 )
 
-run["model"].download("./model_weights/retinanet/MOD2-171.h5")
+run["model"].download("./model_weights/retinanet/MOD2-158.h5")
 run.stop()
 
 # datasets, labels = load_dataset(data_dir="/Volumes/LaCie/data")
@@ -106,7 +106,7 @@ AP = {
     "medium": {},
     "large": {},
     }
-from models.retinanet.module.anchor import AnchorBox
+
 train_num=6033
 for _ in tqdm(range(train_num)):
     image, gt_boxes, gt_labels, input_image, ratio = next(train_set)
@@ -176,7 +176,8 @@ train_df = pd.DataFrame(
 )
 train_df = train_df.sort_values(["object_size", "label"]).reset_index(drop=True)
 
-train_df.to_csv("./result/train_pred_result_4.csv", index=False)
+train_df.to_csv("./result/train_pred_result_1.csv", index=False)
+
 
 
 
@@ -486,4 +487,87 @@ for object_size in ["verytiny", "tiny", "small", "medium", "large"]:
         total += pos_num_df[pos_num_df["object_size"] == object_size][f"class_{i}"].sum()
     print(f'total: {total}')
     
-# %% box clustering with k=5
+# %% FP
+from models.retinanet.module.ap import calculate_pr, calculate_ap_per_class
+from retina_utils import retina_eval
+
+train_set = datasets[0]
+autotune = tf.data.AUTOTUNE
+train_set = train_set.map(
+    lambda x, y, z, w:
+        tf.py_function(
+            retina_eval,
+            [x, y, z, w, -1.],
+            [tf.float32, tf.float32, tf.int32, tf.float32, tf.float32]
+            )
+        ).repeat()
+train_set = train_set.apply(tf.data.experimental.ignore_errors())
+train_set = train_set.prefetch(autotune)
+train_set = iter(train_set)
+
+total_labels = len(labels)
+mAP_threshold = 0.5
+FP = {
+    "verytiny": {},
+    "tiny": {},
+    "small": {},
+    "medium": {},
+    "large": {},
+    }
+
+train_num=6033
+for _ in tqdm(range(train_num)):
+    image, gt_boxes, gt_labels, input_image, ratio = next(train_set)
+    predictions = model(input_image, training=False)
+    scaled_bboxes, final_bboxes, final_scores, final_labels = decoder(input_image, predictions, ratio, tf.shape(image)[:2])
+
+    pred_boxes = scaled_bboxes * tf.tile([749., 1333.], [2]) 
+    true_boxes = gt_boxes * tf.tile([749., 1333.], [2])
+
+    pred_verytiny = tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) < 8.**2
+    true_verytiny = tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < 8.**2
+
+    pred_tiny = tf.logical_and(tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) >= 8.**2, tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) < 16.**2)
+    true_tiny = tf.logical_and(tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) >= 8.**2, tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < 16.**2)
+
+    pred_small = tf.logical_and(tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) >= 16.**2, tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) < 32.**2)
+    true_small = tf.logical_and(tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) >= 16.**2, tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < 32.**2)
+
+    pred_medium = tf.logical_and(tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) >= 32.**2, tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) < 96.**2)
+    true_medium = tf.logical_and(tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) >= 32.**2, tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) < 96.**2)
+
+    pred_large = tf.reduce_prod(pred_boxes[...,2:] - pred_boxes[...,:2], -1) >= 96.**2
+    true_large = tf.reduce_prod(true_boxes[...,2:] - true_boxes[...,:2], -1) >= 96.**2
+
+    for pred_idx, true_idx, key in [
+        (pred_verytiny, true_verytiny, "verytiny"),
+        (pred_tiny, true_tiny, "tiny"),
+        (pred_small, true_small, "small"),
+        (pred_medium, true_medium, "medium"),
+        (pred_large, true_large, "large"),
+        ]:
+
+        selected_gt_boxes = gt_boxes[true_idx]
+        selected_gt_labels = gt_labels[true_idx]
+        selected_pred_boxes = scaled_bboxes[pred_idx]
+        selected_pred_labels = final_labels[pred_idx]
+
+        for c in range(total_labels):
+            # if tf.math.reduce_any(selected_pred_labels == c) or tf.math.reduce_any(selected_gt_labels == c):
+            if tf.logical_not(tf.math.reduce_any(selected_gt_labels == c)) and tf.math.reduce_any(selected_pred_labels == c):
+                final_bbox = tf.expand_dims(selected_pred_boxes[selected_pred_labels == c], axis=0)
+                final_bbox.shape[1]
+
+                try:
+                    FP[key][c] += final_bbox.shape[1]
+                except:
+                    FP[key][c] = final_bbox.shape[1]
+
+    indices = [0, 1, 2, 3, 4, 5]
+    columns = ["verytiny", "tiny", "small", "medium", "large"]
+    train_fp = pd.DataFrame(data=FP, index=indices, columns=columns).fillna(0)
+    train_fp["verytiny"] = train_fp["verytiny"].astype(int)
+    train_fp["tiny"] = train_fp["tiny"].astype(int)
+    train_fp["small"] = train_fp["small"].astype(int)
+    train_fp["medium"] = train_fp["medium"].astype(int)
+    train_fp["large"] = train_fp["large"].astype(int)
