@@ -53,10 +53,10 @@ run = neptune.init(
 project=NEPTUNE_PROJECT,
 api_token=NEPTUNE_API_KEY,
 mode="async",
-run="MOD2-170"
+run="MOD2-173"
 )
 
-run["model"].download("./model_weights/retinanet/MOD2-158.h5")
+run["model"].download("./model_weights/retinanet/MOD2-173.h5")
 run.stop()
 
 # datasets, labels = load_dataset(data_dir="/Volumes/LaCie/data")
@@ -64,15 +64,15 @@ run.stop()
 #     "ship", "/Volumes/LaCie/data", datasets[0], datasets[1], datasets[2]
 #     )
 datasets, labels = load_dataset(data_dir="/media/optim1/Data/won")
+
 train_num, valid_num, test_num = load_data_num(
     "ship", "/media/optim1/Data/won", datasets[0], datasets[1], datasets[2]
     )
-
 train_set, valid_set, test_set = build_dataset(datasets, 1, -1.)
 
 colors = tf.random.uniform((len(labels), 4), maxval=256, dtype=tf.int32)
 model = build_model(len(labels))
-model.load_weights("./model_weights/retinanet/MOD2-171.h5")
+model.load_weights("./model_weights/retinanet/MOD2-173.h5")
 decoder = DecodePredictions(confidence_threshold=0.00)
 
 # while True:
@@ -365,6 +365,7 @@ for i in train_df["label"].unique().tolist():
         train_sum.loc[i,c] = train_df[(train_df["label"] == i) & (train_df["object_size"] == c)]["ap_50"].sum()
         train_mean.loc[i,c] = train_df[(train_df["label"] == i) & (train_df["object_size"] == c)]["ap_50"].mean()
         train_std.loc[i,c] = train_df[(train_df["label"] == i) & (train_df["object_size"] == c)]["ap_50"].std()
+
         
 test_count = pd.DataFrame(index=indices, columns=columns)
 test_sum = pd.DataFrame(index=indices, columns=columns)
